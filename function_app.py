@@ -2,6 +2,7 @@ import azure.functions as func
 import logging
 
 from semantic.agent import AgentSingleton
+from semantic.history import HistorySingleton
 
 # Load env
 from dotenv import load_dotenv
@@ -39,6 +40,22 @@ async def chat(req: func.HttpRequest) -> func.HttpResponse:
     if not chat:
         return func.HttpResponse("No chat message provided.", status_code=400)
 
-    print('masuk')
     response = await agent.chat(chat)
     return func.HttpResponse(response, status_code=200)
+
+
+@app.route(route="history")
+async def history(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a request.')
+
+    history = HistorySingleton()
+
+    all_messages = []
+
+    for message in history.messages:
+        all_messages.append(f"{message.role}: {message.content}")
+
+    if (len(all_messages) == 0):
+        return func.HttpResponse("No chat history available.", status_code=200)
+
+    return func.HttpResponse(str("\n".join(all_messages)), status_code=200)
