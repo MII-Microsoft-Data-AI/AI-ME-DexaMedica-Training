@@ -1,7 +1,7 @@
 import azure.functions as func
 import logging
 
-from semantic.agent import AgentSingleton
+from single_agent.agent import AgentSingleton
 from utils.history import chat_history_from_base64, chat_history_to_base64, chat_history_compress, chat_history_decompress
 
 # Load env
