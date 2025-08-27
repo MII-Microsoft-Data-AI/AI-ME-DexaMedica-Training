@@ -2,7 +2,7 @@ import azure.functions as func
 import logging
 
 from semantic.agent import AgentSingleton
-from semantic.history import HistorySingleton
+from utils.history import chat_history_from_base64, chat_history_to_base64, chat_history_compress, chat_history_decompress
 
 # Load env
 from dotenv import load_dotenv
@@ -49,7 +49,7 @@ async def chat(req: func.HttpRequest) -> func.HttpResponse:
 async def history(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
-    history = HistorySingleton()
+    history = agent.get_history()
 
     all_messages = []
 
@@ -60,3 +60,60 @@ async def history(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("No chat history available.", status_code=200)
 
     return func.HttpResponse(str("\n".join(all_messages)), status_code=200)
+
+@app.route(route="history/export")
+async def history_export(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a request.')
+
+    history = agent.get_history()
+    history_base64 = chat_history_to_base64(history)
+
+    return func.HttpResponse(history_base64, status_code=200)
+
+@app.route(route="history/import", methods=["POST"])
+async def history_import(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a request.')
+
+    if (req.method != "POST"):
+        return func.HttpResponse("Method not allowed.", status_code=405)
+
+    base64_data = req.get_json().get('data')
+    if not base64_data:
+        return func.HttpResponse("No base64 data provided.", status_code=400)
+
+    history = chat_history_from_base64(base64_data)
+    if not history:
+        return func.HttpResponse("Invalid base64 data.", status_code=400)
+
+    agent.set_history(history)
+
+    return func.HttpResponse("Successfully updating chat history.", status_code=200)
+
+
+@app.route(route="history/export/compress")
+async def history_export_compress(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a request.')
+
+    history = agent.get_history()
+    history_base64 = chat_history_compress(history)
+
+    return func.HttpResponse(history_base64, status_code=200)
+
+@app.route(route="history/import/compress", methods=["POST"])
+async def history_import_decompress(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a request.')
+
+    if (req.method != "POST"):
+        return func.HttpResponse("Method not allowed.", status_code=405)
+
+    base64_data = req.get_json().get('data')
+    if not base64_data:
+        return func.HttpResponse("No base64 data provided.", status_code=400)
+
+    history = chat_history_decompress(base64_data)
+    if not history:
+        return func.HttpResponse("Invalid base64 data.", status_code=400)
+
+    agent.set_history(history)
+
+    return func.HttpResponse("Successfully updating chat history.", status_code=200)

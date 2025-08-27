@@ -1,8 +1,7 @@
 import logging
 import os
 
-from .history import HistorySingleton
-from .plugins import LightPlugin, ChatHistoryPlugin
+from .plugins.lights import LightPlugin
 from .prompt import MAIN_AGENT_SYSTEM_PROMPT
 
 from utils.singleton import singleton
@@ -13,6 +12,7 @@ from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
 from semantic_kernel.connectors.ai.function_choice_behavior import FunctionChoiceBehavior
 from semantic_kernel.functions.kernel_arguments import KernelArguments
 from semantic_kernel.contents import ChatMessageContent
+from semantic_kernel.contents.chat_history import ChatHistory
 from semantic_kernel.contents.utils.author_role import AuthorRole
 
 
@@ -23,11 +23,10 @@ from semantic_kernel.connectors.ai.open_ai.prompt_execution_settings.azure_chat_
 setup_logging()
 logging.getLogger("kernel").setLevel(logging.DEBUG)
 
-
 @singleton
 class AgentSingleton:
     def __init__(self):
-        self.history = HistorySingleton()
+        self.history = ChatHistory()
 
         OPENAI_KEY = os.getenv("OPENAI_KEY")
         OPENAI_ENDPOINT = os.getenv("OPENAI_ENDPOINT")
@@ -49,12 +48,6 @@ class AgentSingleton:
         kernel.add_plugin(
             LightPlugin(),
             plugin_name="PLights",
-        )
-
-        # Add a chat history plugin
-        kernel.add_plugin(
-            ChatHistoryPlugin(),
-            plugin_name="PChatHistory"
         )
 
         execution_settings = AzureChatPromptExecutionSettings(service_id=chat_completion.service_id)
@@ -79,7 +72,7 @@ class AgentSingleton:
         arguments = KernelArguments(
             system_message=MAIN_AGENT_SYSTEM_PROMPT,
             history=history_list,
-        )
+        ) 
         function = self.kernel.get_function(function_name="FChat", plugin_name="PChat")
         
 
@@ -92,11 +85,19 @@ class AgentSingleton:
             logging.error("No response from the kernel.")
             return "I'm sorry, I couldn't process your request at this time."
         
-        print("debug", response.model_dump_json())
-
         self.history.add_message(ChatMessageContent(
             role=AuthorRole.ASSISTANT,
-            content=str(response)
+            content=str(response),
         ))
 
         return str(response)
+    
+    def clear_history(self):
+        self.history.clear()
+
+    def get_history(self):
+        return self.history
+
+    def set_history(self, history: ChatHistory):
+        self.history = history
+    

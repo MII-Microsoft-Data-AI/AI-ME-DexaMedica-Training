@@ -1,18 +1,4 @@
-from .history import HistorySingleton
-
 from semantic_kernel.functions import kernel_function
-
-class ChatHistoryPlugin:
-    def __init__(self):
-        self.history = HistorySingleton()
-
-    @kernel_function(
-        name="show_chat_history",
-        description="Displays the chat history",
-    )
-    def show_chat_history(self) -> str:
-        """Return the chat history as a JSON string."""
-        return self.history.model_dump_json()
 
 class LightPlugin:
     def __init__(self):

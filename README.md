@@ -37,3 +37,23 @@ $ curl --get --data-urlencode "chat=<your message>" http://localhost:7071/api/ch
 ```sh
 $ curl http://localhost:7071/api/history
 ```
+
+### Export chat
+```sh
+$ curl http://localhost:7071/api/history/export
+```
+
+### Import chat
+```sh
+$ curl -X POST -d '{"data":"<your base64 data>"}' http://localhost:7071/api/history/import
+```
+
+### Export chat (compressed)
+```sh
+$ curl http://localhost:7071/api/history/export/compress
+```
+
+### Import chat (compressed)
+```sh
+$ curl -X POST -d '{"data":"<your base64 data>"}' http://localhost:7071/api/history/import/compress
+```
