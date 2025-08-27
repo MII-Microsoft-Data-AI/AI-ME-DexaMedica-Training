@@ -13,6 +13,8 @@ from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
 from semantic_kernel.connectors.ai.function_choice_behavior import FunctionChoiceBehavior
 from semantic_kernel.functions.kernel_arguments import KernelArguments
 from semantic_kernel.contents import ChatMessageContent
+from semantic_kernel.contents.utils.author_role import AuthorRole
+
 
 from semantic_kernel.connectors.ai.open_ai.prompt_execution_settings.azure_chat_prompt_execution_settings import (
     AzureChatPromptExecutionSettings,
@@ -39,54 +41,62 @@ class AgentSingleton:
             api_key=OPENAI_KEY,
             endpoint=OPENAI_ENDPOINT,
             api_version="2025-01-01-preview",
+            service_id="SChat",
         )
         kernel.add_service(chat_completion)
 
         # Add a plugin (the LightsPlugin class is defined below)
         kernel.add_plugin(
             LightPlugin(),
-            plugin_name="Lights",
+            plugin_name="PLights",
         )
 
         # Add a chat history plugin
         kernel.add_plugin(
             ChatHistoryPlugin(),
-            plugin_name="ChatHistory"
+            plugin_name="PChatHistory"
         )
 
-        execution_settings = AzureChatPromptExecutionSettings()
+        execution_settings = AzureChatPromptExecutionSettings(service_id=chat_completion.service_id)
         execution_settings.function_choice_behavior = FunctionChoiceBehavior.Auto()
+
         kernel.add_function(
-            prompt="{{system_message}}{{#each history}}<message role=\"{{role}}\">{{content}}</message>{{/each}}",
-            function_name="chat",
-            plugin_name="chat_plugin",
+            plugin_name="PChat",
+            function_name="FChat",
             template_format="handlebars",
+            prompt="{{system_message}}{{#each history}}<message role=\"{{role}}\">{{content}}</message>{{/each}}",
             prompt_execution_settings=execution_settings,
         )
 
         self.kernel = kernel
-        self.chat_completion = chat_completion
-
 
     async def chat(self, message: str) -> str:
         self.history.add_user_message(message)
 
+        # Change history to a list like [{"role": "user", "content": message}, ...]
+        history_list = [{"role": msg.role.name.lower(), "content": msg.content} for msg in self.history.messages]
+
         arguments = KernelArguments(
             system_message=MAIN_AGENT_SYSTEM_PROMPT,
+            history=history_list,
         )
+        function = self.kernel.get_function(function_name="FChat", plugin_name="PChat")
+        
 
-        execution_settings = AzureChatPromptExecutionSettings()
-        execution_settings.function_choice_behavior = FunctionChoiceBehavior.Auto()
-        response = (await self.chat_completion.get_chat_message_contents(
-            chat_history=self.history,
-            kernel=self.kernel,
+        response = await self.kernel.invoke(
+            function=function,
             arguments=arguments,
-            settings=execution_settings
-        ))[0]
+        );
+
+        if response is None:
+            logging.error("No response from the kernel.")
+            return "I'm sorry, I couldn't process your request at this time."
+        
+        print("debug", response.model_dump_json())
 
         self.history.add_message(ChatMessageContent(
-            role=response.role,
-            content=response.content
+            role=AuthorRole.ASSISTANT,
+            content=str(response)
         ))
 
-        return response.content
+        return str(response)

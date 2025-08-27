@@ -41,6 +41,7 @@ async def chat(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("No chat message provided.", status_code=400)
 
     response = await agent.chat(chat)
+    # return func.HttpResponse("Hello", status_code=200)
     return func.HttpResponse(response, status_code=200)
 
 
