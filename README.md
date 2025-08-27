@@ -19,6 +19,7 @@ $ func start
 ```sh
 $ curl http://localhost:7071/api/hello?name=John
 ```
+## Single Agent
 
 ### Chat with llm
 I have integrate some of tools that you can use. Refer to `semantif/plugins.py` for the tools.
@@ -57,3 +58,70 @@ $ curl http://localhost:7071/api/single/history/export/compress
 ```sh
 $ curl -X POST -d '{"data":"<your base64 data>"}' http://localhost:7071/api/single/history/import/compress
 ```
+
+## Multi Agent
+
+### Start the session
+This will start a session to the multi-agent system.
+
+```sh
+$ curl -X POST -d '{"chat":"<your message>"}' http://localhost:7071/api/multi/chat/start
+```
+
+It will hang for waiting to return a response. But, it will not return until you finish the agent. You can open new terminal for contributing into the chat
+
+### Send a message to the session
+This will send a message to the multi-agent system.
+
+```sh
+$ curl -X POST -d '{"chat":"<your message>"}' http://localhost:7071/api/multi/chat
+```
+
+### Check history
+```sh
+$ curl http://localhost:7071/api/multi/history
+```
+
+### Export chat
+```sh
+$ curl http://localhost:7071/api/multi/history/export
+```
+
+### Import chat
+```sh
+$ curl -X POST -d '{"data":"<your base64 data>"}' http://localhost:7071/api/multi/history/import
+```
+
+### Export chat (compressed)
+```sh
+$ curl http://localhost:7071/api/multi/history/export/compress
+```
+
+### Import chat (compressed)
+```sh
+$ curl -X POST -d '{"data":"<your base64 data>"}' http://localhost:7071/api/multi/history/import/compress
+```
+
+### Export state
+```sh
+$ curl http://localhost:7071/api/multi/state/export
+```
+
+### Import state
+```sh
+$ curl -X POST --header "Content-Type: application/json" -d '<your state data>' http://localhost:7071/api/multi/state/import
+```
+
+### Export state (compressed)
+```sh
+$ curl http://localhost:7071/api/multi/state/export/compress
+```
+
+### Import state (compressed)
+```sh
+$ curl -X POST -d '{"data":"<your base64 data>"}' http://localhost:7071/api/multi/state/import/compress
+```
+
+
+## Todo
+1. Setup chat history for multi agent thingy. Still don't know how to get around the state management and chat history lifecycle.
