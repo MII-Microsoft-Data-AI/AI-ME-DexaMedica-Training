@@ -2,14 +2,21 @@ import azure.functions as func
 import logging
 
 from single_agent.agent import AgentSingleton
+from multi_agent.agent import MultiAgent
+
 from utils.history import chat_history_from_base64, chat_history_to_base64, chat_history_compress, chat_history_decompress
 
 # Load env
 from dotenv import load_dotenv
 load_dotenv()  # take environment variables
 
+from semantic_kernel.utils.logging import setup_logging
+setup_logging()
+logging.getLogger("kernel").setLevel(logging.DEBUG)
+
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 agent = AgentSingleton()
+multi_agent = MultiAgent()
 
 @app.route(route="hello")
 def hello(req: func.HttpRequest) -> func.HttpResponse:
@@ -33,7 +40,7 @@ def hello(req: func.HttpRequest) -> func.HttpResponse:
 
 
 @app.route(route="single/chat")
-async def chat(req: func.HttpRequest) -> func.HttpResponse:
+async def single_chat(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
     chat = req.params.get('chat')
@@ -46,7 +53,7 @@ async def chat(req: func.HttpRequest) -> func.HttpResponse:
 
 
 @app.route(route="single/history")
-async def history(req: func.HttpRequest) -> func.HttpResponse:
+async def single_history(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
     history = agent.get_history()
@@ -62,7 +69,7 @@ async def history(req: func.HttpRequest) -> func.HttpResponse:
     return func.HttpResponse(str("\n".join(all_messages)), status_code=200)
 
 @app.route(route="single/history/export")
-async def history_export(req: func.HttpRequest) -> func.HttpResponse:
+async def single_history_export(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
     history = agent.get_history()
@@ -71,7 +78,7 @@ async def history_export(req: func.HttpRequest) -> func.HttpResponse:
     return func.HttpResponse(history_base64, status_code=200)
 
 @app.route(route="single/history/import", methods=["POST"])
-async def history_import(req: func.HttpRequest) -> func.HttpResponse:
+async def single_history_import(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
     if (req.method != "POST"):
@@ -91,7 +98,7 @@ async def history_import(req: func.HttpRequest) -> func.HttpResponse:
 
 
 @app.route(route="single/history/export/compress")
-async def history_export_compress(req: func.HttpRequest) -> func.HttpResponse:
+async def single_history_export_compress(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
     history = agent.get_history()
@@ -100,7 +107,7 @@ async def history_export_compress(req: func.HttpRequest) -> func.HttpResponse:
     return func.HttpResponse(history_base64, status_code=200)
 
 @app.route(route="single/history/import/compress", methods=["POST"])
-async def history_import_decompress(req: func.HttpRequest) -> func.HttpResponse:
+async def single_history_import_decompress(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
     if (req.method != "POST"):

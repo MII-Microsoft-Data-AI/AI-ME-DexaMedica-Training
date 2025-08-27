@@ -7,7 +7,6 @@ from .prompt import MAIN_AGENT_SYSTEM_PROMPT
 from utils.singleton import singleton
 
 from semantic_kernel import Kernel
-from semantic_kernel.utils.logging import setup_logging
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
 from semantic_kernel.connectors.ai.function_choice_behavior import FunctionChoiceBehavior
 from semantic_kernel.functions.kernel_arguments import KernelArguments
@@ -15,13 +14,10 @@ from semantic_kernel.contents import ChatMessageContent
 from semantic_kernel.contents.chat_history import ChatHistory
 from semantic_kernel.contents.utils.author_role import AuthorRole
 
-
 from semantic_kernel.connectors.ai.open_ai.prompt_execution_settings.azure_chat_prompt_execution_settings import (
     AzureChatPromptExecutionSettings,
 )
 
-setup_logging()
-logging.getLogger("kernel").setLevel(logging.DEBUG)
 
 @singleton
 class AgentSingleton:
