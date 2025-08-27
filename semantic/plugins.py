@@ -23,6 +23,14 @@ class LightPlugin:
         ]
 
     @kernel_function(
+        name="light_list",
+        description="Lists all available lights",
+    )
+    def light_list(self) -> list[dict]:
+        """Returns a list of all lights."""
+        return self.data
+
+    @kernel_function(
         name="light_available",
         description="Search for lights if its available, will return id if its available or None if it not available",
     )
@@ -52,7 +60,7 @@ class LightPlugin:
         is_on: bool,
     ) -> str:
         """Changes the state of the light by its id and desired condition."""
-        for light in self.lights:
+        for light in self.data:
             if light["id"] == id:
                 light["is_on"] = is_on
                 return light
