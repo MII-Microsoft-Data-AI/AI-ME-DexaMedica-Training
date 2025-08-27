@@ -32,7 +32,7 @@ def hello(req: func.HttpRequest) -> func.HttpResponse:
         )
 
 
-@app.route(route="chat")
+@app.route(route="single/chat")
 async def chat(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
@@ -45,7 +45,7 @@ async def chat(req: func.HttpRequest) -> func.HttpResponse:
     return func.HttpResponse(response, status_code=200)
 
 
-@app.route(route="history")
+@app.route(route="single/history")
 async def history(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
@@ -61,7 +61,7 @@ async def history(req: func.HttpRequest) -> func.HttpResponse:
 
     return func.HttpResponse(str("\n".join(all_messages)), status_code=200)
 
-@app.route(route="history/export")
+@app.route(route="single/history/export")
 async def history_export(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
@@ -70,7 +70,7 @@ async def history_export(req: func.HttpRequest) -> func.HttpResponse:
 
     return func.HttpResponse(history_base64, status_code=200)
 
-@app.route(route="history/import", methods=["POST"])
+@app.route(route="single/history/import", methods=["POST"])
 async def history_import(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
@@ -90,7 +90,7 @@ async def history_import(req: func.HttpRequest) -> func.HttpResponse:
     return func.HttpResponse("Successfully updating chat history.", status_code=200)
 
 
-@app.route(route="history/export/compress")
+@app.route(route="single/history/export/compress")
 async def history_export_compress(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
@@ -99,7 +99,7 @@ async def history_export_compress(req: func.HttpRequest) -> func.HttpResponse:
 
     return func.HttpResponse(history_base64, status_code=200)
 
-@app.route(route="history/import/compress", methods=["POST"])
+@app.route(route="single/history/import/compress", methods=["POST"])
 async def history_import_decompress(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 

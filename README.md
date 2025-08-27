@@ -17,7 +17,7 @@ $ func start
 
 ### Hello (with name)
 ```sh
-$ curl http://localhost:7071/api/Hello?name=John
+$ curl http://localhost:7071/api/hello?name=John
 ```
 
 ### Chat with llm
@@ -30,30 +30,30 @@ There's currently 2 tools:
 - Chat history - Model can retrieve the chat history (I dunno why i do it lol)
 
 ```sh
-$ curl --get --data-urlencode "chat=<your message>" http://localhost:7071/api/chat
+$ curl --get --data-urlencode "chat=<your message>" http://localhost:7071/api/single/chat
 ```
 
 ### Check history
 ```sh
-$ curl http://localhost:7071/api/history
+$ curl http://localhost:7071/api/single/history
 ```
 
 ### Export chat
 ```sh
-$ curl http://localhost:7071/api/history/export
+$ curl http://localhost:7071/api/single/history/export
 ```
 
 ### Import chat
 ```sh
-$ curl -X POST -d '{"data":"<your base64 data>"}' http://localhost:7071/api/history/import
+$ curl -X POST -d '{"data":"<your base64 data>"}' http://localhost:7071/api/single/history/import
 ```
 
 ### Export chat (compressed)
 ```sh
-$ curl http://localhost:7071/api/history/export/compress
+$ curl http://localhost:7071/api/single/history/export/compress
 ```
 
 ### Import chat (compressed)
 ```sh
-$ curl -X POST -d '{"data":"<your base64 data>"}' http://localhost:7071/api/history/import/compress
+$ curl -X POST -d '{"data":"<your base64 data>"}' http://localhost:7071/api/single/history/import/compress
 ```
