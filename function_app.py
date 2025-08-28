@@ -230,9 +230,10 @@ async def multi_history_import_decompress(req: func.HttpRequest) -> func.HttpRes
     return func.HttpResponse("Successfully updating chat history.", status_code=200)
 
 # Hands-off Agent Endpoints
+
 @app.route(route="handsoff/chat", methods=["POST"])
 async def handsoff_chat(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for handsoff_chat.')
+    logging.info('Python HTTP trigger function processed a request for multi_chat.')
 
     try:
         req_body = req.get_json()
@@ -244,20 +245,20 @@ async def handsoff_chat(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("No chat message provided in the request body.", status_code=400)
 
     try:
-        response = hands_off_agent.chat(chat_message)
+        
+        return func.HttpResponse(multi_agent.chat(chat_message), status_code=202)
     except Exception as e:
-        logging.error(f"Error sending message to hands-off agent: {e}")
-        return func.HttpResponse("Error sending message to hands-off agent. " + str(e), status_code=500)
+        logging.error(f"Error sending message to multi-agent: {e}")
+        return func.HttpResponse("Error sending message to multi-agent. " + str(e), status_code=500)
 
-    return func.HttpResponse(response, status_code=202)
 
 
 @app.route(route="handsoff/history")
 async def handsoff_history(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for handsoff_history.')
+    logging.info('Python HTTP trigger function processed a request for multi_history.')
 
-    history = hands_off_agent.get_history()
-    all_messages = [f"{message.role}: {message.content}" for message in history.messages]
+    history = multi_agent.get_history()
+    all_messages = [f"{message.role}: {message.content}" for message in history]
 
     if not all_messages:
         return func.HttpResponse("No chat history available.", status_code=200)
@@ -267,9 +268,9 @@ async def handsoff_history(req: func.HttpRequest) -> func.HttpResponse:
 
 @app.route(route="handsoff/history/export")
 async def handsoff_history_export(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for handsoff_history_export.')
+    logging.info('Python HTTP trigger function processed a request for multi_history_export.')
 
-    history = hands_off_agent.get_history()
+    history = multi_agent.get_history()
     history_base64 = chat_history_to_base64(history)
 
     return func.HttpResponse(history_base64, status_code=200)
@@ -277,7 +278,7 @@ async def handsoff_history_export(req: func.HttpRequest) -> func.HttpResponse:
 
 @app.route(route="handsoff/history/import", methods=["POST"])
 async def handsoff_history_import(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for handsoff_history_import.')
+    logging.info('Python HTTP trigger function processed a request for multi_history_import.')
 
     try:
         req_body = req.get_json()
@@ -292,16 +293,16 @@ async def handsoff_history_import(req: func.HttpRequest) -> func.HttpResponse:
     if not history:
         return func.HttpResponse("Invalid base64 data.", status_code=400)
 
-    hands_off_agent.set_history(history)
+    multi_agent.set_history(history)
 
     return func.HttpResponse("Successfully updating chat history.", status_code=200)
 
 
 @app.route(route="handsoff/history/export/compress")
 async def handsoff_history_export_compress(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for handsoff_history_export_compress.')
+    logging.info('Python HTTP trigger function processed a request for multi_history_export_compress.')
 
-    history = hands_off_agent.get_history()
+    history = multi_agent.get_history()
     history_base64 = chat_history_compress(history)
 
     return func.HttpResponse(history_base64, status_code=200)
@@ -309,7 +310,7 @@ async def handsoff_history_export_compress(req: func.HttpRequest) -> func.HttpRe
 
 @app.route(route="handsoff/history/import/compress", methods=["POST"])
 async def handsoff_history_import_decompress(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for handsoff_history_import_decompress.')
+    logging.info('Python HTTP trigger function processed a request for multi_history_import_decompress.')
 
     try:
         req_body = req.get_json()
@@ -324,16 +325,16 @@ async def handsoff_history_import_decompress(req: func.HttpRequest) -> func.Http
     if not history:
         return func.HttpResponse("Invalid base64 data.", status_code=400)
 
-    hands_off_agent.set_history(history)
+    multi_agent.set_history(history)
 
     return func.HttpResponse("Successfully updating chat history.", status_code=200)
 
 
 @app.route(route="handsoff/state/export")
 async def handsoff_state_export(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for handsoff_state_export.')
+    logging.info('Python HTTP trigger function processed a request for multi_state_export.')
 
-    state = await hands_off_agent.get_state()
+    state = await multi_agent.get_state()
     base64 = state_to_base64(state)
 
     return func.HttpResponse(base64, status_code=200)
@@ -341,7 +342,7 @@ async def handsoff_state_export(req: func.HttpRequest) -> func.HttpResponse:
 
 @app.route(route="handsoff/state/import", methods=["POST"])
 async def handsoff_state_import(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for handsoff_state_import.')
+    logging.info('Python HTTP trigger function processed a request for multi_state_import.')
 
     try:
         req_body = req.get_json()
@@ -356,17 +357,17 @@ async def handsoff_state_import(req: func.HttpRequest) -> func.HttpResponse:
     if not state:
         return func.HttpResponse("Invalid base64 data.", status_code=400)
 
-    hands_off_agent.set_state(state)
+    multi_agent.set_state(state)
 
     return func.HttpResponse("Successfully updating agent state.", status_code=200)
 
 
 @app.route(route="handsoff/state/export/compress")
 async def handsoff_state_export_compress(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for handsoff_state_export_compress.')
+    logging.info('Python HTTP trigger function processed a request for multi_state_export_compress.')
 
-    state = await hands_off_agent.get_state()
-    state_dict = json.loads(state) if isinstance(state, str) else state
+    state_str = multi_agent.get_state()
+    state_dict = json.loads(state_str)
     state_base64 = state_compress(state_dict)
 
     return func.HttpResponse(state_base64, status_code=200)
@@ -374,7 +375,7 @@ async def handsoff_state_export_compress(req: func.HttpRequest) -> func.HttpResp
 
 @app.route(route="handsoff/state/import/compress", methods=["POST"])
 async def handsoff_state_import_compress(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for handsoff_state_import_compress.')
+    logging.info('Python HTTP trigger function processed a request for multi_state_import_compress.')
 
     try:
         req_body = req.get_json()
@@ -390,6 +391,6 @@ async def handsoff_state_import_compress(req: func.HttpRequest) -> func.HttpResp
         return func.HttpResponse("Invalid base64 data.", status_code=400)
 
     state_str = json.dumps(state_dict)
-    hands_off_agent.set_state(state_str)
+    multi_agent.set_state(state_str)
 
     return func.HttpResponse("Successfully updating agent state.", status_code=200)

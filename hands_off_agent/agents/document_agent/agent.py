@@ -1,4 +1,4 @@
-from multi_agent.common import COMMON_AGENT_SERVICE
+from hands_off_agent.common import COMMON_AGENT_SERVICE
 from semantic_kernel.agents import ChatCompletionAgent
 
 document_search_agent = ChatCompletionAgent(

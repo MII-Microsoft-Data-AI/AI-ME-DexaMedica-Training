@@ -1,5 +1,5 @@
-from multi_agent.common import COMMON_AGENT_SERVICE
-from multi_agent.agents.light_agent.plugins.light import LightPlugin
+from hands_off_agent.common import COMMON_AGENT_SERVICE
+from hands_off_agent.agents.light_agent.plugins.light import LightPlugin
 from semantic_kernel.agents import ChatCompletionAgent
 
 light_agent = ChatCompletionAgent(
