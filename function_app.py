@@ -129,24 +129,6 @@ async def single_history_import_decompress(req: func.HttpRequest) -> func.HttpRe
 
     return func.HttpResponse("Successfully updating chat history.", status_code=200)
 
-
-@app.route(route="multi/chat/start", methods=["POST"])
-async def multi_chat_start(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for multi_chat.')
-
-    try:
-        req_body = req.get_json()
-        chat_message = req_body.get('chat')
-    except ValueError:
-        return func.HttpResponse("Invalid JSON format.", status_code=400)
-
-    if not chat_message:
-        return func.HttpResponse("No chat message provided in the request body.", status_code=400)
-
-    multi_agent.start_agent(chat_message)
-    return func.HttpResponse("Multi-agent started successfully.", status_code=202)
-
-
 @app.route(route="multi/chat", methods=["POST"])
 async def multi_chat(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request for multi_chat.')
@@ -161,12 +143,12 @@ async def multi_chat(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("No chat message provided in the request body.", status_code=400)
 
     try:
-        multi_agent.send_message(chat_message)
+        response = multi_agent.chat(chat_message)
     except Exception as e:
         logging.error(f"Error sending message to multi-agent: {e}")
         return func.HttpResponse("Error sending message to multi-agent. " + str(e), status_code=500)
 
-    return func.HttpResponse("Message sent to multi-agent.", status_code=202)
+    return func.HttpResponse(response, status_code=202)
 
 
 @app.route(route="multi/history")
