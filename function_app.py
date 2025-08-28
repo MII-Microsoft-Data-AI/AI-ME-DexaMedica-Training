@@ -143,7 +143,7 @@ async def multi_chat_start(req: func.HttpRequest) -> func.HttpResponse:
     if not chat_message:
         return func.HttpResponse("No chat message provided in the request body.", status_code=400)
 
-    await multi_agent.start_agent(chat_message)
+    multi_agent.start_agent(chat_message)
     return func.HttpResponse("Multi-agent started successfully.", status_code=202)
 
 
@@ -246,67 +246,67 @@ async def multi_history_import_decompress(req: func.HttpRequest) -> func.HttpRes
     return func.HttpResponse("Successfully updating chat history.", status_code=200)
 
 
-@app.route(route="multi/state/export")
-async def multi_state_export(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for multi_state_export.')
+# @app.route(route="multi/state/export")
+# async def multi_state_export(req: func.HttpRequest) -> func.HttpResponse:
+#     logging.info('Python HTTP trigger function processed a request for multi_state_export.')
 
-    state = await multi_agent.get_state()
-    base64 = state_to_base64(state)
+#     state = await multi_agent.get_state()
+#     base64 = state_to_base64(state)
 
-    return func.HttpResponse(base64, status_code=200)
-
-
-@app.route(route="multi/state/import", methods=["POST"])
-async def multi_state_import(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for multi_state_import.')
-
-    try:
-        req_body = req.get_json()
-        base64_data = req_body.get('data')
-    except ValueError:
-        return func.HttpResponse("Invalid JSON format.", status_code=400)
-
-    if not base64_data:
-        return func.HttpResponse("No base64 data provided.", status_code=400)
-
-    state = state_from_base64(base64_data)
-    if not state:
-        return func.HttpResponse("Invalid base64 data.", status_code=400)
-
-    multi_agent.set_state(state)
-
-    return func.HttpResponse("Successfully updating agent state.", status_code=200)
+#     return func.HttpResponse(base64, status_code=200)
 
 
-@app.route(route="multi/state/export/compress")
-async def multi_state_export_compress(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for multi_state_export_compress.')
+# @app.route(route="multi/state/import", methods=["POST"])
+# async def multi_state_import(req: func.HttpRequest) -> func.HttpResponse:
+#     logging.info('Python HTTP trigger function processed a request for multi_state_import.')
 
-    state_str = multi_agent.get_state()
-    state_dict = json.loads(state_str)
-    state_base64 = state_compress(state_dict)
+#     try:
+#         req_body = req.get_json()
+#         base64_data = req_body.get('data')
+#     except ValueError:
+#         return func.HttpResponse("Invalid JSON format.", status_code=400)
 
-    return func.HttpResponse(state_base64, status_code=200)
+#     if not base64_data:
+#         return func.HttpResponse("No base64 data provided.", status_code=400)
+
+#     state = state_from_base64(base64_data)
+#     if not state:
+#         return func.HttpResponse("Invalid base64 data.", status_code=400)
+
+#     multi_agent.set_state(state)
+
+#     return func.HttpResponse("Successfully updating agent state.", status_code=200)
 
 
-@app.route(route="multi/state/import/compress", methods=["POST"])
-async def multi_state_import_compress(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for multi_state_import_compress.')
+# @app.route(route="multi/state/export/compress")
+# async def multi_state_export_compress(req: func.HttpRequest) -> func.HttpResponse:
+#     logging.info('Python HTTP trigger function processed a request for multi_state_export_compress.')
 
-    try:
-        req_body = req.get_json()
-        base64_data = req_body.get('data')
-    except ValueError:
-        return func.HttpResponse("Invalid JSON format.", status_code=400)
+#     state_str = multi_agent.get_state()
+#     state_dict = json.loads(state_str)
+#     state_base64 = state_compress(state_dict)
 
-    if not base64_data:
-        return func.HttpResponse("No base64 data provided.", status_code=400)
+#     return func.HttpResponse(state_base64, status_code=200)
 
-    state_dict = state_decompress(base64_data)
-    if not state_dict:
-        return func.HttpResponse("Invalid base64 data.", status_code=400)
 
-    state_str = json.dumps(state_dict)
-    multi_agent.set_state(state_str)
+# @app.route(route="multi/state/import/compress", methods=["POST"])
+# async def multi_state_import_compress(req: func.HttpRequest) -> func.HttpResponse:
+#     logging.info('Python HTTP trigger function processed a request for multi_state_import_compress.')
 
-    return func.HttpResponse("Successfully updating agent state.", status_code=200)
+#     try:
+#         req_body = req.get_json()
+#         base64_data = req_body.get('data')
+#     except ValueError:
+#         return func.HttpResponse("Invalid JSON format.", status_code=400)
+
+#     if not base64_data:
+#         return func.HttpResponse("No base64 data provided.", status_code=400)
+
+#     state_dict = state_decompress(base64_data)
+#     if not state_dict:
+#         return func.HttpResponse("Invalid base64 data.", status_code=400)
+
+#     state_str = json.dumps(state_dict)
+#     multi_agent.set_state(state_str)
+
+#     return func.HttpResponse("Successfully updating agent state.", status_code=200)

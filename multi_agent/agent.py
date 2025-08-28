@@ -1,117 +1,72 @@
-from semantic_kernel.agents import OrchestrationHandoffs
-from semantic_kernel.agents import HandoffOrchestration
-from semantic_kernel.agents.runtime import InProcessRuntime
+import queue
+import asyncio
+import threading
 
 from utils.singleton import singleton
-from multi_agent.agents import orchestrator_agent, document_search_agent, light_agent
+from multi_agent.agents import orchestrator_agent
 
-from semantic_kernel.contents import AuthorRole, ChatMessageContent
 from semantic_kernel.contents.chat_history import ChatHistory
+from semantic_kernel.agents import ChatCompletionAgent, ChatHistoryAgentThread
 
-import asyncio
 
 @singleton
 class MultiAgent:
 
     # This is for buffering user input while waiting the 
     # agent halting for user input
-    buffered_user_input: str | None = None
-    main_tasks: None | str = None
-    chat_history: ChatHistory = ChatHistory()
+    thread: ChatHistoryAgentThread = ChatHistoryAgentThread()
+
+    queue_input = queue.Queue()
+    queue_output = queue.Queue()
+
+    main_session: threading.Thread | None = None
 
     def __init__(self):
-        self.agents = [
-            orchestrator_agent,
-            document_search_agent,
-            light_agent,
-        ]
+        self.agent = orchestrator_agent
 
-        self.handoffs = (
-            OrchestrationHandoffs()
-            .add_many(    # Use add_many to add multiple handoffs to the same source agent at once
-                source_agent="OrchestratorAgent",
-                target_agents={
-                    "DocumentSearchAgent": "Transfer to this agent if there's a request on document search",
-                    "LightAgent": "Transfer to this agent if there's a request on smart home light control",
-                },
-            )
-            .add(    
-                source_agent="DocumentSearchAgent",
-                description="Transfer to general agent who orchestrate to another task",
-                target_agent="OrchestratorAgent",
-            )
-            .add(
-                source_agent="LightAgent",
-                description="Transfer to general agent who orchestrate to another task",
-                target_agent="OrchestratorAgent",
-            )
-        )
-
-        self.handoff_orchestration = HandoffOrchestration(
-            members=self.agents,
-            handoffs=self.handoffs,
-            human_response_function=self._wait_for_user_input,
-            agent_response_callback= lambda x : self._on_agent_response(x)
-        )
-
-        self.runtime = InProcessRuntime()
-        self.runtime.start()
-
-    def _on_agent_response(self, response: ChatMessageContent):
-        self.chat_history.add_message(response)
-
-    # Consuming buffered user input
-    async def _wait_for_user_input(self) -> ChatMessageContent:
-        if self.buffered_user_input is None:
-            await asyncio.sleep(1)
-            return await self._wait_for_user_input()
-
-        # Get the buffered user input
-        buffered_user_input = str(self.buffered_user_input)
-        self.buffered_user_input = None
-
-        # Save the user input to chat history
-        message_content = ChatMessageContent(
-                role=AuthorRole.USER,
-                content=buffered_user_input
-        )
-
-        self.chat_history.add_message(
-            message_content
-        )
-
-        return message_content
+    def chat(self, message):
+        if self.main_session is None:
+            return str(self.start_agent(message))
+        else:
+            self.queue_input.put(message)
+            return str(self.queue_output.get())
 
     # Publishing user input
-    async def start_agent(self, message):
-        if self.main_tasks is not None:
-            raise Exception("Multi-agent is already running.")
-
-        self.main_tasks = message
-        self.chat_history.add_message(
-            ChatMessageContent(
-                role=AuthorRole.USER,
-                content=message
-            )
-        )
-
-        orchestration_result = await self.handoff_orchestration.invoke(message, runtime=self.runtime)
-        await orchestration_result.get()
-
-    def send_message(self, message):
-        if self.main_tasks is None:
-            raise Exception("Multi-agent is not running. Please start the agent first.")
+    def start_agent(self, message):
+        self.queue_input.put(message)
         
-        self.buffered_user_input = message
+        # Run the model chat loop in the background
+        self.main_session = threading.Thread(target=self.__loop_executor__, name='main-thread')
+        self.main_session.start()
 
-    async def get_state(self):
-        return await self.runtime.save_state()
+        return self.queue_output.get()
+
+    def __loop_executor__(self):
+        print("starting, loop")
+        asyncio.new_event_loop().run_until_complete(self.chat_loop(self.agent, self.queue_input, self.queue_output, self.thread))
+
+    async def chat_loop(self, agent: ChatCompletionAgent, queue_input: queue.Queue, queue_output: queue.Queue, thread: ChatHistoryAgentThread):
+        while True:
+            print("loop running")
+            user_input = queue_input.get()
+
+            print(user_input)
+            if user_input == "\\q":
+                break
+            
+            print("Getting response")
+            response = await agent.get_response(
+                messages=user_input,
+                thread=thread,
+            )
+
+            print("Response gotten", response)
+            queue_output.put(response)
 
     def get_history(self):
-        return self.chat_history
-    
-    def set_state(self, state):
-        self.runtime.load_state(state)
+        return self.thread._chat_history
 
     def set_history(self, history: ChatHistory):
-        self.chat_history = history
+        self.thread = ChatHistoryAgentThread(
+            chat_history=history
+        )
