@@ -23,6 +23,8 @@ class HandsoffAgent:
 
     main_session: None | threading.Thread = None
 
+    output_buffer = []
+
     def __init__(self):
 
         self.chat_history = ChatHistory()
@@ -34,6 +36,7 @@ class HandsoffAgent:
             document_search_agent,
             light_agent,
         ]
+
 
         self.handoffs = (
             OrchestrationHandoffs()
@@ -60,14 +63,33 @@ class HandsoffAgent:
             members=self.agents,
             handoffs=self.handoffs,
             human_response_function=self.__user_input__,
-            agent_response_callback= lambda x : self._on_agent_response_(x)
+            agent_response_callback= lambda x : self._on_agent_response_(x),
         )
 
+        self.counter = 0
+
     def _on_agent_response_(self, response: ChatMessageContent):
+
         self.chat_history.add_message(response)
 
+        self.counter += 1
+
         if response.content is not None and response.content.strip() != "":
-            self.queue_output.put(response.content)
+           self._return_output_debounce_(response.content)
+
+    def _return_output_debounce_(self, text: str):
+        self.output_buffer.append(text)
+
+        def return_output(memory_buffer:list[str], current_buffer: list[str]):
+            if "".join(memory_buffer) != "".join(current_buffer):
+                return
+            self.queue_output.put("\n\n".join(self.output_buffer))
+            self.output_buffer = [] 
+
+        # After 2 seconds run the return_output function and compare the copied buffers and and active buffers
+        current_output_buffer = self.output_buffer[:]
+        timer = threading.Timer(2, return_output, (self.output_buffer, current_output_buffer))
+        timer.start()
 
     async def __user_input__(self) -> ChatMessageContent:
         # Get user input
