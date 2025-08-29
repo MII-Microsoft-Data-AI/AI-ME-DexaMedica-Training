@@ -1,5 +1,6 @@
 import os
 
+import mimetypes
 from openai import AzureOpenAI
 from azure.search.documents import SearchClient
 from azure.core.credentials import AzureKeyCredential
@@ -22,10 +23,10 @@ from azure.search.documents.indexes.models import (
 from dotenv import load_dotenv
 load_dotenv()  # take environment variables
 
-ELIGIBLE_EXTENSIONS = [
-    ".pdf",
-    ".docx",
-    ".txt"
+ELIGIBLE_EXTENSIONS_MIME = [
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain"
 ]
 
 # Document Intelligence
@@ -86,20 +87,28 @@ def init_index():
     aisearch_index_client.create_or_update_index(index)
 
 
-def file_eligible(filename: str) -> bool:
-    return any(filename.endswith(ext) for ext in ELIGIBLE_EXTENSIONS)
+def file_eligible(file_path: str) -> bool:
+    # Check extension
+    _, ext = os.path.splitext(file_path)
+    if ext.lower() in ELIGIBLE_EXTENSIONS_MIME:
+        return True
+
+    # Check mimetype
+    mimetype, _ = mimetypes.guess_type(file_path)
+    if mimetype:
+        if mimetype in ELIGIBLE_EXTENSIONS_MIME:
+            return True
+    return False
+
 
 def ocr(file_path: str) -> str:
     file_bytes = open(file_path, "rb").read()
-
     analyzer = document_intelligence_client.begin_analyze_document(
         "prebuilt-read", analyze_request=AnalyzeDocumentRequest(
             bytes_source=file_bytes
         )
     )
-
     results = analyzer.result()
-
     return results.content
 
 def chunk_text(text: str) -> list[str]:
@@ -107,12 +116,10 @@ def chunk_text(text: str) -> list[str]:
 
 def embed(text: str) -> list[float]:
     deployment = "main-text-embeddings-small"
-
     response = embedding_client.embeddings.create(
         input=[text],
         model=deployment
     )
-
     return response.data[0].embedding   
 
 def upload_to_ai_search_studio(chunk_num: int, file_name: str, content: str, embeddings: list[float]) -> None:
@@ -150,4 +157,3 @@ def main():
 
 if __name__ == "__main__":
     init_index()
-    main()
