@@ -5,7 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "azure-ai-documentintelligence==1.0.0b4",
     "azure-functions>=1.23.0",
+    "azure-search-documents>=11.5.3",
     "fastapi>=0.116.1",
     "langchain-text-splitters>=0.3.9",
     "pydantic>=2.11.7",
