@@ -12,6 +12,7 @@ import asyncio
 import base64
 import json
 import os
+import tempfile
 from io import BytesIO
 
 # Import agents
@@ -29,6 +30,11 @@ from utils.state import (
     state_compress, state_decompress
 )
 
+# Import document processing utilities
+from document_upload_cli.utils import (
+    file_eligible, ocr, chunk_text, embed, upload_to_ai_search_studio, init_index
+)
+
 # Load env
 from dotenv import load_dotenv
 load_dotenv()
@@ -42,8 +48,8 @@ st.set_page_config(
 )
 
 # Company logo/image configuration
-COMPANY_LOGO_URL = "https://www.astabyte.com/assets/astabyte-white.svg"  # Change this URL later
-COMPANY_NAME = "Astabyte"  # Change this name later
+COMPANY_LOGO_URL = "https://d1csarkz8obe9u.cloudfront.net/posterpreviews/company-logo-design-template-e089327a5c476ce5c70c74f7359c5898_screen.jpg?ts=1672291305"  # Change this URL later
+COMPANY_NAME = "Company Sample"  # Change this name later
 COMPANY_TAGLINE = "Powered by Semantic Kernel & Azure OpenAI"  # Change this tagline later
 
 # Custom CSS for better styling
@@ -75,6 +81,14 @@ st.markdown("""
     .css-1d391kg {
         padding-top: 2rem;
     }
+            
+    .reportview-container {
+        margin-top: -2em;
+    }
+    #MainMenu {visibility: hidden;}
+    .stDeployButton {display:none;}
+    footer {visibility: hidden;}
+    #stDecoration {display:none;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -95,8 +109,86 @@ def init_session_state():
 
 init_session_state()
 
+# Document processing function
+def process_document(uploaded_file, progress_callback=None):
+    """
+    Process an uploaded document through OCR, chunking, embedding, and upload to AI Search
+    """
+    try:
+        # Check environment variables
+        required_envs = [
+            "DOCUMENT_INTELLIGENCE_ENDPOINT",
+            "DOCUMENT_INTELLIGENCE_KEY",
+            "OPENAI_KEY",
+            "OPENAI_ENDPOINT",
+            "AI_SEARCH_KEY",
+            "AI_SEARCH_ENDPOINT",
+            "AI_SEARCH_INDEX"
+        ]
+        missing = [env for env in required_envs if not os.getenv(env)]
+        if missing:
+            raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
+
+        # Save uploaded file to temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as tmp_file:
+            tmp_file.write(uploaded_file.getvalue())
+            temp_file_path = tmp_file.name
+        
+        try:
+            # Check if file is eligible
+            if not file_eligible(temp_file_path):
+                raise ValueError(f"File type not supported: {uploaded_file.type}")
+            
+            if progress_callback:
+                progress_callback(10, "Starting OCR processing...")
+            
+            # Perform OCR
+            ocr_result = ocr(temp_file_path)
+            
+            if progress_callback:
+                progress_callback(30, "OCR complete, chunking text...")
+            
+            # Chunk the text
+            chunks = chunk_text(ocr_result)
+            
+            if progress_callback:
+                progress_callback(40, f"Text chunked into {len(chunks)} pieces, starting upload...")
+            
+            # Process chunks sequentially
+            for i, text_chunk in enumerate(chunks):
+                if progress_callback:
+                    progress = 40 + (i + 1) / len(chunks) * 50
+                    progress_callback(progress, f"Processing chunk {i+1}/{len(chunks)}...")
+                
+                # Generate embeddings and upload
+                embeddings = embed(text_chunk)
+                upload_to_ai_search_studio(i, uploaded_file.name, text_chunk, embeddings)
+            
+            if progress_callback:
+                progress_callback(100, "Upload complete!")
+            
+            return {
+                "success": True,
+                "message": f"Successfully processed {uploaded_file.name}",
+                "chunks_processed": len(chunks),
+                "total_characters": len(ocr_result)
+            }
+            
+        finally:
+            # Clean up temporary file
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
+                
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error processing {uploaded_file.name}: {str(e)}",
+            "chunks_processed": 0,
+            "total_characters": 0
+        }
+
 # Sidebar navigation - simplified
-st.sidebar.image(COMPANY_LOGO_URL, width=200)
+st.sidebar.image(COMPANY_LOGO_URL)
 st.sidebar.title(f"{COMPANY_NAME}")
 st.sidebar.markdown("---")
 
@@ -113,9 +205,9 @@ page = page_mapping[page]
 # Upload Page
 def upload_page():
     # Header with company branding
-    col1, col2 = st.columns([1, 3])
+    col1, col2 = st.columns([1, 2])
     with col1:
-        st.image(COMPANY_LOGO_URL, width=150)
+        st.image(COMPANY_LOGO_URL)
     with col2:
         st.title("📁 Document Upload")
         st.markdown(f'<p class="company-info">{COMPANY_NAME} - Multi-Agent System</p>', unsafe_allow_html=True)
@@ -124,8 +216,34 @@ def upload_page():
     st.markdown("Upload documents to be processed by the document search agent.")
     st.markdown("---")
     
+    # Check environment variables
+    required_envs = [
+        "DOCUMENT_INTELLIGENCE_ENDPOINT",
+        "DOCUMENT_INTELLIGENCE_KEY", 
+        "OPENAI_KEY",
+        "OPENAI_ENDPOINT",
+        "AI_SEARCH_KEY",
+        "AI_SEARCH_ENDPOINT",
+        "AI_SEARCH_INDEX"
+    ]
+    missing_envs = [env for env in required_envs if not os.getenv(env)]
+    
+    if missing_envs:
+        st.error(f"❌ **Missing Environment Variables:** {', '.join(missing_envs)}")
+        st.markdown("Please configure the required environment variables to enable document upload functionality.")
+        return
+    
     # Upload instructions
-    st.info("📝 **Instructions:** Upload PDF, DOCX, or TXT files. The documents will be processed and made available for the document search agent to query.")
+    st.info("📝 **Instructions:** Upload PDF, DOCX, or TXT files. The documents will be processed using OCR, chunked, embedded, and uploaded to Azure AI Search for the document search agent to query.")
+    
+    # Initialize AI Search index button
+    if st.button("🔧 Initialize AI Search Index", help="Initialize or update the AI Search index"):
+        with st.spinner("Initializing AI Search index..."):
+            try:
+                init_index()
+                st.success("✅ AI Search index initialized successfully!")
+            except Exception as e:
+                st.error(f"❌ Failed to initialize index: {str(e)}")
     
     # File uploader
     uploaded_files = st.file_uploader(
@@ -138,30 +256,43 @@ def upload_page():
     if uploaded_files:
         st.subheader("📋 Uploaded Files:")
         
+        # Process all files button
+        col1, col2, col3 = st.columns([1, 1, 2])
+        with col1:
+            if st.button("� Process All Files", help="Process all uploaded files at once"):
+                process_all_files(uploaded_files)
+        
+        with col2:
+            clear_files = st.button("🗑️ Clear All", help="Clear all uploaded files")
+            if clear_files:
+                st.rerun()
+        
+        # Individual file processing
         for uploaded_file in uploaded_files:
-            with st.expander(f"📄 {uploaded_file.name} ({uploaded_file.type})"):
+            with st.expander(f"📄 {uploaded_file.name} ({uploaded_file.type}) - {uploaded_file.size:,} bytes"):
                 # File details
-                file_details = {
-                    "Filename": uploaded_file.name,
-                    "FileType": uploaded_file.type,
-                    "FileSize": f"{uploaded_file.size:,} bytes"
-                }
-                
                 col1, col2 = st.columns([2, 1])
+                
                 with col1:
-                    st.json(file_details)
+                    st.markdown(f"**File:** {uploaded_file.name}")
+                    st.markdown(f"**Type:** {uploaded_file.type}")
+                    st.markdown(f"**Size:** {uploaded_file.size:,} bytes")
+                    
+                    # Check if file is eligible
+                    file_extension = uploaded_file.name.split('.')[-1].lower()
+                    eligible_extensions = ['pdf', 'docx', 'txt']
+                    
+                    if file_extension in eligible_extensions:
+                        st.success("✅ File type supported")
+                    else:
+                        st.warning("⚠️ File type may not be fully supported")
                 
                 with col2:
                     st.markdown("**Actions:**")
-                    if st.button(f"🔄 Process", key=f"process_{uploaded_file.name}"):
-                        # Here you would integrate with document_input functionality
-                        with st.spinner(f"Processing {uploaded_file.name}..."):
-                            # Placeholder for document processing
-                            # You can integrate with document_input.split_and_upload here
-                            st.success(f"✅ {uploaded_file.name} processed successfully!")
                     
-                    if st.button(f"📥 Download", key=f"download_{uploaded_file.name}"):
-                        st.info("Download functionality will be implemented with document processing pipeline")
+                    # Process individual file
+                    if st.button(f"� Process", key=f"process_{uploaded_file.name}"):
+                        process_single_file(uploaded_file)
     else:
         st.markdown("### 🎯 No files uploaded yet")
         st.markdown("Use the file uploader above to get started with document processing.")
@@ -186,6 +317,100 @@ def upload_page():
             <small>{COMPANY_TAGLINE}</small>
         </div>
         """, unsafe_allow_html=True)
+
+
+def process_single_file(uploaded_file):
+    """Process a single uploaded file"""
+    # Create progress bar and status container
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    result_container = st.empty()
+    
+    def update_progress(progress, message):
+        progress_bar.progress(progress / 100)
+        status_text.text(message)
+    
+    # Process the file
+    result = process_document(uploaded_file, update_progress)
+    
+    # Show results
+    with result_container.container():
+        if result["success"]:
+            st.success(f"✅ {result['message']}")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Chunks Created", result["chunks_processed"])
+            with col2:
+                st.metric("Characters Processed", f"{result['total_characters']:,}")
+        else:
+            st.error(f"❌ {result['message']}")
+    
+    # Clear progress indicators
+    progress_bar.empty()
+    status_text.empty()
+
+
+def process_all_files(uploaded_files):
+    """Process all uploaded files sequentially"""
+    st.markdown("### 🚀 Processing All Files")
+    
+    overall_progress = st.progress(0)
+    overall_status = st.empty()
+    
+    results = []
+    total_files = len(uploaded_files)
+    
+    for i, uploaded_file in enumerate(uploaded_files):
+        overall_status.text(f"Processing file {i+1}/{total_files}: {uploaded_file.name}")
+        
+        # Create individual progress for this file
+        st.markdown(f"**Processing:** {uploaded_file.name}")
+        file_progress = st.progress(0)
+        file_status = st.empty()
+        
+        def update_progress(progress, message):
+            file_progress.progress(progress / 100)
+            file_status.text(message)
+        
+        # Process the file
+        result = process_document(uploaded_file, update_progress)
+        results.append(result)
+        
+        # Show individual result
+        if result["success"]:
+            st.success(f"✅ {uploaded_file.name}: {result['chunks_processed']} chunks processed")
+        else:
+            st.error(f"❌ {uploaded_file.name}: {result['message']}")
+        
+        # Update overall progress
+        overall_progress.progress((i + 1) / total_files)
+        
+        # Clean up individual progress bars
+        file_progress.empty()
+        file_status.empty()
+    
+    # Show final summary
+    overall_status.text("All files processed!")
+    
+    successful = [r for r in results if r["success"]]
+    failed = [r for r in results if not r["success"]]
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Files", total_files)
+    with col2:
+        st.metric("Successful", len(successful))
+    with col3:
+        st.metric("Failed", len(failed))
+    with col4:
+        total_chunks = sum(r["chunks_processed"] for r in successful)
+        st.metric("Total Chunks", total_chunks)
+    
+    if failed:
+        with st.expander("❌ Failed Files", expanded=True):
+            for result in failed:
+                st.error(result["message"])
 
 
 
@@ -251,9 +476,9 @@ def agent_page():
         st.markdown("### ⚙️ Quick Actions")
         col1, col2 = st.columns(2)
         with col1:
-            show_settings = st.button("Settings", help="Show management options")
+            show_settings = st.button("Settings", help="Show management options", use_container_width=True)
         with col2:
-            if st.button("Clear Chat", help="Clear current conversation"):
+            if st.button("Clear Chat", help="Clear current conversation", use_container_width=True):
                 # Clear the appropriate message history
                 if agent_choice == "Single Agent":
                     st.session_state.single_messages = []
@@ -408,6 +633,30 @@ def agent_page():
 
 # Main app routing
 def main():
+    # Initialize AI Search index on startup (only once per session)
+    if 'index_initialized' not in st.session_state:
+        try:
+            # Check if we have the required environment variables
+            required_envs = [
+                "DOCUMENT_INTELLIGENCE_ENDPOINT",
+                "DOCUMENT_INTELLIGENCE_KEY",
+                "OPENAI_KEY", 
+                "OPENAI_ENDPOINT",
+                "AI_SEARCH_KEY",
+                "AI_SEARCH_ENDPOINT",
+                "AI_SEARCH_INDEX"
+            ]
+            missing = [env for env in required_envs if not os.getenv(env)]
+            
+            if not missing:
+                init_index()
+                st.session_state.index_initialized = True
+            else:
+                st.session_state.index_initialized = False
+        except Exception as e:
+            st.session_state.index_initialized = False
+            # Don't show error on startup, will be shown in upload page if needed
+    
     if page == "Upload":
         upload_page()
     elif page == "Agent":

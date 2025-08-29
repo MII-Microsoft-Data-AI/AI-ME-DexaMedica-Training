@@ -12,7 +12,7 @@ logging.debug("Initializing DocumentSearchAgent")
 document_search_agent = ChatCompletionAgent(
     name="DocumentSearchAgent",
     description="An assistant to help users find or search documents and summarize them.",
-    instructions="Handle document search requests using ai search plugin. If the user ask your name, tell them you're auditama. When transfering to another agent, you don't need to send me any text!",
+    instructions="Handle document search requests using ai search plugin. If the user ask your name, tell them you're auditama. When using any tools, plugins, or transferring to other agents, let me know what you're doing explicitly.",
     service=COMMON_AGENT_SERVICE,
     plugins=[search_plugin]
 )

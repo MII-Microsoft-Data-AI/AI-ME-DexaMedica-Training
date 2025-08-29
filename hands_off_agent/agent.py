@@ -74,7 +74,6 @@ class HandsoffAgent:
         self.counter = 0
 
     def _on_agent_response_(self, response: ChatMessageContent):
-        print(response)
         self.chat_history.add_message(response)
 
         self.counter += 1
@@ -139,16 +138,22 @@ class HandsoffAgent:
         self.main_session.start()
 
 
-    async def chat_loop(self, orchestrator: HandoffOrchestration, runtime: InProcessRuntime, queue_input: queue.Queue):
+    async def chat_loop(self, orchestrator: HandoffOrchestration, runtime: InProcessRuntime, queue_input: queue.Queue, agent_response_callback: callable):
         runtime.start()
-        initial_message = queue_input.get()
-        orchestration_result = await orchestrator.invoke(initial_message, runtime)
-        result = await orchestration_result.get()
-        return result
+        while True:
+            initial_message = queue_input.get()
+            orchestration_result = await orchestrator.invoke(initial_message, runtime)
+            result = await orchestration_result.get()
+
+            # Check if the results is a list
+            if isinstance(result, list):
+                agent_response_callback(result[-1])
+                return
+            agent_response_callback(result)
 
     def __loop_executor__(self):
         # Running loop executor
-        asyncio.new_event_loop().run_until_complete(self.chat_loop(self.handoff_orchestration, self.runtime, self.queue_input))
+        asyncio.new_event_loop().run_until_complete(self.chat_loop(self.handoff_orchestration, self.runtime, self.queue_input, self._on_agent_response_))
 
     def stop_agent(self):
         if self.coroutine is not None:

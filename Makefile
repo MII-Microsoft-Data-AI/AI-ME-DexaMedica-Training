@@ -1,5 +1,5 @@
 streamlit:
-	streamlit run app.py
+	streamlit run streamlit_app.py
 
 fastapi:
 	uvicorn fastapi_app:app --reload
