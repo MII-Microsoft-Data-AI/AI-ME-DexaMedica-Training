@@ -14,6 +14,11 @@ import asyncio
 import queue
 import threading
 
+import logging
+from semantic_kernel.utils.logging import setup_logging
+setup_logging()
+logging.getLogger("kernel").setLevel(logging.DEBUG)
+
 @singleton
 class HandsoffAgent:
     queue_input = queue.Queue()
@@ -43,7 +48,7 @@ class HandsoffAgent:
             .add_many(    # Use add_many to add multiple handoffs to the same source agent at once
                 source_agent="OrchestratorAgent",
                 target_agents={
-                    "DocumentSearchAgent": "Transfer to this agent if there's a request on document search",
+                    "DocumentSearchAgent": "Transfer to this agent if there's a request that are need some searching for knowledge. This will search an internal document.",
                     "LightAgent": "Transfer to this agent if there's a request on smart home light control",
                 },
             )
@@ -69,7 +74,7 @@ class HandsoffAgent:
         self.counter = 0
 
     def _on_agent_response_(self, response: ChatMessageContent):
-
+        print(response)
         self.chat_history.add_message(response)
 
         self.counter += 1
@@ -88,7 +93,7 @@ class HandsoffAgent:
 
         # After 2 seconds run the return_output function and compare the copied buffers and and active buffers
         current_output_buffer = self.output_buffer[:]
-        timer = threading.Timer(2, return_output, (self.output_buffer, current_output_buffer))
+        timer = threading.Timer(5, return_output, (self.output_buffer, current_output_buffer))
         timer.start()
 
     async def __user_input__(self) -> ChatMessageContent:
