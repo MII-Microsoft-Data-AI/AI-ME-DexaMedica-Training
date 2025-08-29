@@ -1,5 +1,8 @@
 import sys
+
 from document_upload_cli.utils import file_eligible, ocr, chunk_text, embed, upload_to_ai_search_studio, init_index
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def main():
 
@@ -36,14 +39,29 @@ def main():
 
     print(f"Processing file: {file_path}")
     ocr_result = ocr(file_path)
+    print(f"Processing file: {file_path} - OCR Done")
     chunks = chunk_text(ocr_result)
+    print(f"Processing file: {file_path} - Chunking Done")
 
-    for i, text_chunk in enumerate(chunks):
+    print(f"Processing file: {file_path} - Starting Upload")
+
+    def upload_chunk(i, text_chunk):
+        print(f"Processing file: {file_path} - Uploading chunk {i+1}/{len(chunks)}")
         embeddings = embed(text_chunk)
         upload_to_ai_search_studio(i, file_name, text_chunk, embeddings)
-        print(f"Uploaded chunk {i+1}/{len(chunks)}")
+        print(f"Processing file: {file_path} - Uploaded chunk {i+1}/{len(chunks)}")
 
-    print("Upload complete.")
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = [executor.submit(upload_chunk, i, text_chunk) for i, text_chunk in enumerate(chunks)]
+        for future in as_completed(futures):
+            # Optionally handle exceptions here
+            try:
+                future.result()
+            except Exception as e:
+                print(f"Error uploading chunk: {e}")
+
+    print(f"Processing file: {file_path} - Upload Complete")
 
 if __name__ == "__main__":
     init_index()

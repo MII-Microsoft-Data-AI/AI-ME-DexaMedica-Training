@@ -1,4 +1,5 @@
 import os
+import re
 
 import mimetypes
 from openai import AzureOpenAI
@@ -55,6 +56,19 @@ embedding_client = AzureOpenAI(
 aisearch_client = SearchClient(AI_SEARCH_ENDPOINT, AI_SEARCH_INDEX, AzureKeyCredential(AI_SEARCH_KEY))
 aisearch_index_client = SearchIndexClient(endpoint=AI_SEARCH_ENDPOINT, credential=AzureKeyCredential(AI_SEARCH_KEY))
 
+# Helper to encode file name before ingested to the ID
+def encode_key(file_name: str, chunk_num: int) -> str:
+    # Replace spaces and periods with underscores
+    sanitized = file_name.replace(" ", "_").replace(".", "_")
+    
+    # Remove any characters not in the allowed set: letters, digits, _, -, =
+    sanitized = re.sub(r"[^a-zA-Z0-9_\-=]", "", sanitized)
+    
+    # Append the chunk number
+    key = f"{sanitized}_{chunk_num}"
+    
+    return key
+
 def init_index():
 
     # Define vector search configuration
@@ -76,6 +90,7 @@ def init_index():
     # Define fields
     fields = [
         SimpleField(name="id", type=SearchFieldDataType.String, key=True),
+        SimpleField(name="chunk_num", type=SearchFieldDataType.Int64, filterable=True),
         SimpleField(name="file_name", type=SearchFieldDataType.String, filterable=True),
         SearchableField(name="content", type=SearchFieldDataType.String, searchable=True),
         SearchField(name="content_vector", type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
@@ -112,7 +127,12 @@ def ocr(file_path: str) -> str:
     return results.content
 
 def chunk_text(text: str) -> list[str]:
-    return RecursiveCharacterTextSplitter.split_text(text)
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        separators=["\n\n", "\n", " ", ""]
+    )
+    return splitter.split_text(text=text)
 
 def embed(text: str) -> list[float]:
     deployment = "main-text-embeddings-small"
@@ -124,10 +144,11 @@ def embed(text: str) -> list[float]:
 
 def upload_to_ai_search_studio(chunk_num: int, file_name: str, content: str, embeddings: list[float]) -> None:
     document = {
-        "id": f"{file_name}_{chunk_num}",
+        "id": encode_key(file_name, chunk_num),
         "file_name": file_name,
+        "chunk_num": chunk_num,
         "content": content,
-        "embeddings": embeddings,
+        "content_vector": embeddings,
     }
 
     aisearch_client.upload_documents([document])
