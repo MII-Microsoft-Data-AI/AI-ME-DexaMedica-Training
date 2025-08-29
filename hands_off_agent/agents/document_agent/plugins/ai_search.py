@@ -120,7 +120,7 @@ search_plugin = KernelPlugin(
                     type_object=str,
                 ),
             ],
-            # string_mapper=lambda x: f"(file_name :{x.record.file_name}) (chunk_num: {x.record.chunk_num}) (content: {x.record.content}).",
+            string_mapper=lambda x: f"(file_name :{x.record.file_name}) (chunk_num: {x.record.chunk_num}) (content: {x.record.content}).",
         ),
     ],
 )
