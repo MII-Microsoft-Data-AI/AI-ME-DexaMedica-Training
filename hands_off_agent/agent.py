@@ -142,7 +142,7 @@ class HandsoffAgent:
         runtime.start()
         while True:
             initial_message = queue_input.get()
-            orchestration_result = await orchestrator.invoke(initial_message, runtime)
+            orchestration_result = await orchestrator.invoke(str(initial_message), runtime)
             result = await orchestration_result.get()
 
             # Check if the results is a list

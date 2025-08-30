@@ -15,6 +15,9 @@ import os
 import tempfile
 from io import BytesIO
 
+# Azure Speech SDK for voice-to-text
+import azure.cognitiveservices.speech as speechsdk
+
 # Import agents
 from single_agent.agent import AgentSingleton
 from multi_agent.agent import MultiAgent
@@ -38,6 +41,10 @@ from document_upload_cli.utils import (
 # Load env
 from dotenv import load_dotenv
 load_dotenv()
+
+# Voice input section
+speech_key = os.environ.get('SPEECH_KEY')
+speech_endpoint = os.environ.get('SPEECH_ENDPOINT')
 
 # Set page configuration
 st.set_page_config(
@@ -81,6 +88,23 @@ st.markdown("""
     .css-1d391kg {
         padding-top: 2rem;
     }
+    
+    /* Voice button styling */
+    .voice-recording {
+        animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+        100% {
+            opacity: 1;
+        }
+    }
             
     .reportview-container {
         margin-top: -2em;
@@ -106,8 +130,79 @@ def init_session_state():
         st.session_state.multi_messages = []
     if 'handsoff_messages' not in st.session_state:
         st.session_state.handsoff_messages = []
+    if 'recording' not in st.session_state:
+        st.session_state.recording = False
+    if 'voice_input_text' not in st.session_state:
+        st.session_state.voice_input_text = ""
 
 init_session_state()
+
+# Voice-to-text functionality using Azure Speech Services
+def recognize_speech_from_microphone():
+    """
+    Recognize speech from microphone using Azure Speech Services
+    Returns the recognized text or error message
+    """
+    try:
+        # Check for required environment variables
+        speech_key = os.environ.get('SPEECH_KEY')
+        speech_endpoint = os.environ.get('SPEECH_ENDPOINT')
+        
+        if not speech_key or not speech_endpoint:
+            return {
+                "success": False,
+                "text": "",
+                "error": "Missing SPEECH_KEY or SPEECH_ENDPOINT environment variables"
+            }
+        
+        # Configure speech recognition
+        speech_config = speechsdk.SpeechConfig(
+            subscription=speech_key, 
+            endpoint=speech_endpoint
+        )
+        speech_config.speech_recognition_language = "id-ID"  # Change language as needed
+        
+        # Configure audio input
+        audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
+        speech_recognizer = speechsdk.SpeechRecognizer(
+            speech_config=speech_config, 
+            audio_config=audio_config
+        )
+        
+        # Perform speech recognition
+        speech_recognition_result = speech_recognizer.recognize_once_async().get()
+
+        if speech_recognition_result.reason == speechsdk.ResultReason.RecognizedSpeech:
+            print("debug2", speech_recognition_result.text)
+            return {
+                "success": True,
+                "text": speech_recognition_result.text,
+                "error": None
+            }
+        elif speech_recognition_result.reason == speechsdk.ResultReason.NoMatch:
+            return {
+                "success": False,
+                "text": "",
+                "error": f"No speech could be recognized: {speech_recognition_result.no_match_details}"
+            }
+        elif speech_recognition_result.reason == speechsdk.ResultReason.Canceled:
+            cancellation_details = speech_recognition_result.cancellation_details
+            error_msg = f"Speech Recognition canceled: {cancellation_details.reason}"
+            if cancellation_details.reason == speechsdk.CancellationReason.Error:
+                error_msg += f" - Error details: {cancellation_details.error_details}"
+            return {
+                "success": False,
+                "text": "",
+                "error": error_msg
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "text": "",
+            "error": f"Speech recognition error: {str(e)}"
+        }
+    finally:
+        st.session_state.recording = False
 
 # Document processing function
 def process_document(uploaded_file, progress_callback=None):
@@ -422,9 +517,25 @@ def clean_chat_interface(agent, agent_name, messages_key, is_async=True):
         for message in st.session_state[messages_key]:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
-    
-    # Chat input at the bottom
-    if prompt := st.chat_input(f"Message {agent_name}..."):
+
+
+    if speech_key and speech_endpoint:
+        # Voice input controls
+        st.markdown("### 🎤 Voice Input")
+        if not st.session_state.recording:
+            if st.button("🎤 Record", help="Click to start voice input", key=f"voice_btn_{messages_key}", use_container_width=True):
+                st.session_state.recording = True
+                st.rerun()
+        else:
+            with st.spinner("Listening..."):
+                result = recognize_speech_from_microphone()
+                if result["success"]:
+                    st.session_state.chat_input = str(result["text"])
+                st.session_state.recording = False
+                st.rerun()
+
+    # Regular chat input (always available)
+    if prompt := st.chat_input(f"Type your message to {agent_name}...", key="chat_input", ):
         # Add user message to chat history
         st.session_state[messages_key].append({"role": "user", "content": prompt})
         
@@ -446,7 +557,6 @@ def clean_chat_interface(agent, agent_name, messages_key, is_async=True):
                 st.error(error_msg)
                 st.session_state[messages_key].append({"role": "assistant", "content": error_msg})
                 st.rerun()
-
 
 
 # Agent Page - Clean and focused on chat
@@ -471,6 +581,14 @@ def agent_page():
             "Multi-Agent Hands-off": "🤝 Advanced handoff system"
         }
         st.info(agent_descriptions[agent_choice])
+        
+        # Voice feature status
+        speech_key = os.environ.get('SPEECH_KEY')
+        speech_endpoint = os.environ.get('SPEECH_ENDPOINT')
+        if speech_key and speech_endpoint:
+            st.success("🎤 Voice input enabled")
+        else:
+            st.warning("🎤 Voice input disabled\n\nSet SPEECH_KEY and SPEECH_ENDPOINT environment variables to enable voice-to-text functionality.")
         
         # Quick actions
         st.markdown("### ⚙️ Quick Actions")
