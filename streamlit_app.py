@@ -11,8 +11,8 @@ import os
 
 if os.environ.get('CONTAINERIZE', '0') == '1':
     # Install libasound2-dev for audio support in Docker
-    os.system('sudo apt-get update')
-    os.system('sudo apt-get install -y libasound2-dev')
+    os.system('apt-get update')
+    os.system('apt-get install -y libasound2-dev pulseaudio')
 
 import streamlit as st
 import asyncio
