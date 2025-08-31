@@ -7,10 +7,16 @@ To customize company branding:
 3. Optionally update colors in the CSS styling below
 """
 
+import os
+
+if os.environ.get('CONTAINERIZE', '0') == '1':
+    # Install libasound2-dev for audio support in Docker
+    os.system('sudo apt-get update')
+    os.system('sudo apt-get install -y libasound2-dev')
+
 import streamlit as st
 import asyncio
 import json
-import os
 import tempfile
 
 import queue
