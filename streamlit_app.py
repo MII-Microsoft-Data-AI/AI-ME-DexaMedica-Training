@@ -9,11 +9,13 @@ To customize company branding:
 
 import streamlit as st
 import asyncio
-import base64
 import json
 import os
 import tempfile
-from io import BytesIO
+
+import queue
+
+from threading import Thread
 
 # Azure Speech SDK for voice-to-text
 import azure.cognitiveservices.speech as speechsdk
@@ -41,6 +43,9 @@ from document_upload_cli.utils import (
 # Load env
 from dotenv import load_dotenv
 load_dotenv()
+
+# Queue for streaming STT results
+queue_output_stt = queue.Queue()
 
 # Voice input section
 speech_key = os.environ.get('SPEECH_KEY')
@@ -134,6 +139,9 @@ def init_session_state():
         st.session_state.recording = False
     if 'voice_input_text' not in st.session_state:
         st.session_state.voice_input_text = ""
+    if 'voice_input_streaming' not in st.session_state:
+        st.session_state.voice_input_streaming = ""
+
 
 init_session_state()
 
@@ -143,66 +151,52 @@ def recognize_speech_from_microphone():
     Recognize speech from microphone using Azure Speech Services
     Returns the recognized text or error message
     """
-    try:
-        # Check for required environment variables
-        speech_key = os.environ.get('SPEECH_KEY')
-        speech_endpoint = os.environ.get('SPEECH_ENDPOINT')
-        
-        if not speech_key or not speech_endpoint:
-            return {
-                "success": False,
-                "text": "",
-                "error": "Missing SPEECH_KEY or SPEECH_ENDPOINT environment variables"
-            }
-        
-        # Configure speech recognition
-        speech_config = speechsdk.SpeechConfig(
-            subscription=speech_key, 
-            endpoint=speech_endpoint
-        )
-        speech_config.speech_recognition_language = "id-ID"  # Change language as needed
-        
-        # Configure audio input
-        audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
-        speech_recognizer = speechsdk.SpeechRecognizer(
-            speech_config=speech_config, 
-            audio_config=audio_config
-        )
-        
-        # Perform speech recognition
-        speech_recognition_result = speech_recognizer.recognize_once_async().get()
-
-        if speech_recognition_result.reason == speechsdk.ResultReason.RecognizedSpeech:
-            print("debug2", speech_recognition_result.text)
-            return {
-                "success": True,
-                "text": speech_recognition_result.text,
-                "error": None
-            }
-        elif speech_recognition_result.reason == speechsdk.ResultReason.NoMatch:
-            return {
-                "success": False,
-                "text": "",
-                "error": f"No speech could be recognized: {speech_recognition_result.no_match_details}"
-            }
-        elif speech_recognition_result.reason == speechsdk.ResultReason.Canceled:
-            cancellation_details = speech_recognition_result.cancellation_details
-            error_msg = f"Speech Recognition canceled: {cancellation_details.reason}"
-            if cancellation_details.reason == speechsdk.CancellationReason.Error:
-                error_msg += f" - Error details: {cancellation_details.error_details}"
-            return {
-                "success": False,
-                "text": "",
-                "error": error_msg
-            }
-    except Exception as e:
+    # Check for required environment variables
+    speech_key = os.environ.get('SPEECH_KEY')
+    speech_endpoint = os.environ.get('SPEECH_ENDPOINT')
+    
+    if not speech_key or not speech_endpoint:
         return {
             "success": False,
             "text": "",
-            "error": f"Speech recognition error: {str(e)}"
+            "error": "Missing SPEECH_KEY or SPEECH_ENDPOINT environment variables"
         }
-    finally:
-        st.session_state.recording = False
+    
+    # Configure speech recognition
+    speech_config = speechsdk.SpeechConfig(
+        subscription=speech_key, 
+        endpoint=speech_endpoint
+    )
+    speech_config.speech_recognition_language = "id-ID"  # Change language as needed
+    
+    # Configure audio input
+    audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
+    speech_recognizer = speechsdk.SpeechRecognizer(
+        speech_config=speech_config, 
+        audio_config=audio_config
+    )
+
+    def _thread_recognizing_(evt, queue_out: queue.Queue):
+        queue_out.put({
+            "finish": False,
+            "text": evt.result.text
+        })
+
+    def _thread_recognize_(evt, queue_out: queue.Queue):
+        queue_out.put({
+            "finish": True,
+            "text": evt.result.text
+        })
+
+    speech_recognizer.recognizing.connect(lambda evt: _thread_recognizing_(evt, queue_output_stt))
+    speech_recognizer.recognized.connect(lambda evt: _thread_recognize_(evt, queue_output_stt))
+    
+    # Perform speech recognition
+    def _main_thread_():
+        speech_recognizer.recognize_once()
+
+    thread = Thread(target=_main_thread_)
+    thread.start()
 
 # Document processing function
 def process_document(uploaded_file, progress_callback=None):
@@ -527,12 +521,31 @@ def clean_chat_interface(agent, agent_name, messages_key, is_async=True):
                 st.session_state.recording = True
                 st.rerun()
         else:
-            with st.spinner("Listening..."):
-                result = recognize_speech_from_microphone()
-                if result["success"]:
-                    st.session_state.chat_input = str(result["text"])
+            def stream_stt():
+                final_text = ""
+                while True:
+                    try:
+                        item = queue_output_stt.get(timeout=0.1)
+
+                        # Get the Difference between final_text and item["text"]
+                        len_final = len(final_text)
+                        new_text = ""
+                        if len(item["text"]) > len_final:
+                            new_text = item["text"][len_final:]
+                        yield new_text
+                        final_text = item["text"]
+                        if item["finish"]:
+                            break
+                    except queue.Empty:
+                        continue
+                st.session_state.chat_input = final_text
                 st.session_state.recording = False
                 st.rerun()
+
+            with st.spinner("Listening..."):
+                recognize_speech_from_microphone()
+                if st.session_state.recording:
+                    st.write_stream(stream_stt())
 
     # Regular chat input (always available)
     if prompt := st.chat_input(f"Type your message to {agent_name}...", key="chat_input", ):
