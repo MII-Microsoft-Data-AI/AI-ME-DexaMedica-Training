@@ -176,7 +176,11 @@ def recognize_speech_from_microphone():
     speech_config.speech_recognition_language = "id-ID"  # Change language as needed
     
     # Configure audio input
-    audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
+    stream = speechsdk.audio.AudioStreamFormat(
+        samples_per_second=16000, bits_per_sample=16, channels=1,
+        compressed_stream_format=speechsdk.AudioStreamContainerFormat.MP3
+    )
+    audio_config = speechsdk.audio.AudioConfig(stream=stream)
     speech_recognizer = speechsdk.SpeechRecognizer(
         speech_config=speech_config, 
         audio_config=audio_config
