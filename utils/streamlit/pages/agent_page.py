@@ -12,17 +12,38 @@ from utils.state import (
     state_compress, state_decompress
 )
 
+# Import config
+from ..config import COMPANY_LOGO_URL, COMPANY_NAME, COMPANY_TAGLINE
+
+import queue
+
 # Import voice functionality
-from ..voice import recognize_speech_from_microphone, queue_output_stt, speech_key, speech_endpoint
+from ..voice.voice import recognize_speech_from_microphone, queue_output_stt, speech_key, speech_endpoint,  create_streaming_voice_interface, stop_recognition_signal
 
 # Import UI components
 from ..ui.chat_interface import clean_chat_interface
+
+def start_recording():
+    stop_recognition_signal.clear()
+    st.session_state.recording = True
+    st.session_state.chat_input = ""
+    st.rerun()
+
+def stop_recording():
+    st.session_state.recording = False
+    stop_recognition_signal.set()
+    st.rerun()
+
+def update_chat_input(text: str):
+    st.session_state.chat_input = text
+    st.rerun()
+
 
 def agent_page():
     # Minimal header
     st.title("🤖 AI Chat Assistant")
 
-    # Agent selection in sidebar instead of main area
+
     with st.sidebar:
         st.markdown("### 🎯 Choose Agent")
         agent_choice = st.selectbox(
@@ -43,8 +64,18 @@ def agent_page():
         # Voice feature status
         if speech_key and speech_endpoint:
             st.success("🎤 Voice input enabled")
+            
+            # Voice interface mode selector
+            voice_mode = st.selectbox(
+                "Voice Input Mode",
+                ["Basic (Click to Record)", "Streaming (Real-time)"],
+                index=0,
+                help="Choose between basic microphone recording or real-time WebRTC streaming"
+            )
+            
         else:
             st.warning("🎤 Voice input disabled\n\nSet SPEECH_KEY and SPEECH_ENDPOINT environment variables to enable voice-to-text functionality.")
+            voice_mode = None
 
         # Quick actions
         st.markdown("### ⚙️ Quick Actions")
@@ -73,6 +104,54 @@ def agent_page():
 
     # Main chat interface - clean and centered
     st.markdown(f"### 💬 Chatting with {agent_choice}")
+
+    # Voice interface section
+    if speech_key and speech_endpoint and 'voice_mode' in locals():
+        # Check if user selected streaming mode
+        if voice_mode == "Streaming (Real-time)":
+            st.markdown("#### 🎤 Real-time Voice Input")
+            
+            # Create streaming voice interface
+            voice_interface = create_streaming_voice_interface(key=f"voice-{agent_choice.lower().replace(' ', '-')}", on_start=start_recording, on_stop=stop_recording)
+            if not st.session_state.recording:
+                if st.button("🎤 Record", help="Click to start voice input", key=f"voice_btn_{messages_key}", use_container_width=True):
+                    start_recording()
+            # Render the streaming interface
+            voice_interface.render_interface(st.session_state.recording)
+
+        if voice_mode == "Basic (Click to Record)":
+            # Voice input controls
+            st.markdown("### 🎤 Voice Input")
+            if not st.session_state.recording:
+                if st.button("🎤 Record", help="Click to start voice input", key=f"voice_btn_{messages_key}", use_container_width=True):
+                    start_recording()
+            else:
+                recognize_speech_from_microphone()
+    
+    if st.session_state.recording:
+        def stream_stt():
+            final_text = ""
+            while True:
+                try:
+                    item = queue_output_stt.get(timeout=0.1)
+
+                    # Get the Difference between final_text and item["text"]
+                    len_final = len(final_text)
+                    new_text = ""
+                    if len(item["text"]) > len_final:
+                        new_text = item["text"][len_final:]
+                    yield new_text
+                    final_text = item["text"]
+                    if item["finish"]:
+                        break
+                except queue.Empty:
+                    continue
+            
+            st.session_state.chat_input = final_text
+            st.session_state.recording = False
+            st.rerun()
+
+        st.write_stream(stream_stt())
 
     # Chat interface
     clean_chat_interface(selected_agent, agent_choice, messages_key, is_async)
@@ -196,7 +275,6 @@ def agent_page():
 
     # Add footer at bottom of sidebar for agent page
     with st.sidebar:
-        from ..config import COMPANY_NAME, COMPANY_TAGLINE
         st.markdown("---")
         st.markdown(f"""
         <div style="text-align: center; color: #666; font-size: 0.8rem; padding: 10px 0;">

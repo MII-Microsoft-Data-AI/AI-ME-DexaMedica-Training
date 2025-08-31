@@ -4,11 +4,15 @@ import streamlit as st
 from ..config import COMPANY_LOGO_URL, COMPANY_NAME
 
 # Sidebar navigation - simplified
+# st.sidebar.image(COMPANY_LOGO_URL)
+# st.sidebar.title(f"{COMPANY_NAME}")
+# st.sidebar.markdown("---")
+
+
+# Navigation
 st.sidebar.image(COMPANY_LOGO_URL)
 st.sidebar.title(f"{COMPANY_NAME}")
 st.sidebar.markdown("---")
-
-# Navigation
 page = st.sidebar.selectbox("📍 Navigation", ["🤖 Agent", "📁 Upload"])
 
 # Convert display names back to simple names for routing

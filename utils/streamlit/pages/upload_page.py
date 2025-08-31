@@ -8,6 +8,11 @@ from ..document import process_single_file, process_all_files, init_index
 from ..config import COMPANY_LOGO_URL, COMPANY_NAME, COMPANY_TAGLINE
 
 def upload_page():
+    # Minimal header
+    st.title("📁 Upload")
+
+    # Agent selection in sidebar instead of main area
+
     # Header with company branding
     col1, col2 = st.columns([1, 2])
     with col1:

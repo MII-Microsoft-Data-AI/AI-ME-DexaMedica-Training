@@ -633,7 +633,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "av", specifier = ">=14.4.0" },
+    { name = "av", specifier = ">=14.0.0,<15.0.0" },
     { name = "azure-ai-documentintelligence", specifier = "==1.0.0b4" },
     { name = "azure-functions", specifier = ">=1.23.0" },
     { name = "azure-search-documents", specifier = ">=11.5.3" },
