@@ -703,6 +703,19 @@ async def handsoff_chat(request: ChatRequest):
         return {"response": response}
     except Exception as e:
         logging.error(f"Error sending message to hands-off agent: {e}")
+        
+        # Try to restart the agent on certain errors
+        if "pydantic_core._pydantic_core.ValidationError" in str(e) or "ValidationError" in str(e):
+            try:
+                logging.info("Attempting to restart hands-off agent due to validation error...")
+                hands_off_agent.restart_agent()
+                # Try the request again after restart
+                response = hands_off_agent.chat(request.chat)
+                return {"response": response}
+            except Exception as restart_error:
+                logging.error(f"Error even after restarting hands-off agent: {restart_error}")
+                return {"response": f"The hands-off agent encountered an error and couldn't recover. Please try again later. Error: {str(restart_error)}"}
+        
         raise HTTPException(status_code=500, detail=f"Error sending message to hands-off agent. {str(e)}")
 
 @app.get("/handsoff/history")

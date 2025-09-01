@@ -23,12 +23,10 @@ logging.getLogger("kernel").setLevel(logging.DEBUG)
 class HandsoffAgent:
     queue_input = queue.Queue()
     queue_output = queue.Queue()
-
     chat_history = ChatHistory()
-
     main_session: None | threading.Thread = None
-
     output_buffer = []
+    stop_event = threading.Event()
 
     def __init__(self):
 
@@ -105,26 +103,32 @@ class HandsoffAgent:
         return message_content
 
     def chat(self, message: str) -> str:
-        # Add to ChatHistory
-        self.chat_history.add_message(
-            ChatMessageContent(
-                role=AuthorRole.USER,
-                content=message
+        try:
+            # Add to ChatHistory
+            self.chat_history.add_message(
+                ChatMessageContent(
+                    role=AuthorRole.USER,
+                    content=message
+                )
             )
-        )
 
-        # Place message to process by model
-        self.queue_input.put(message)
+            # Place message to process by model
+            self.queue_input.put(message)
 
-        # Start the model (if not started)
-        if self.main_session is None:
-            self.start_agent()
+            # Start the model (if not started)
+            if self.main_session is None:
+                self.start_agent()
 
-
-        # wait for the output when done processing
-        output = str(self.queue_output.get())
-
-        return output
+            # wait for the output when done processing with timeout
+            try:
+                output = str(self.queue_output.get(timeout=30))  # 30 second timeout
+                return output
+            except queue.Empty:
+                return "The request timed out. The hands-off agent may be experiencing issues. Please try again."
+        
+        except Exception as e:
+            logging.error(f"Error in hands-off agent chat method: {e}")
+            return f"I encountered an issue processing your request: {str(e)}. Please try again or contact support if the problem persists."
 
     # Consuming buffered user input
     def start_agent(self):
@@ -140,25 +144,51 @@ class HandsoffAgent:
 
     async def chat_loop(self, orchestrator: HandoffOrchestration, runtime: InProcessRuntime, queue_input: queue.Queue, agent_response_callback: callable):
         runtime.start()
-        while True:
-            initial_message = queue_input.get()
-            orchestration_result = await orchestrator.invoke(str(initial_message), runtime)
-            result = await orchestration_result.get()
+        while not self.stop_event.is_set():
+            try:
+                # Get message from queue with timeout to avoid blocking forever
+                initial_message = queue_input.get(timeout=1)  # 1 second timeout
+            except queue.Empty:
+                # Continue the loop if no message is available
+                await asyncio.sleep(0.1)
+                continue
+                
+            try:
+                orchestration_result = await orchestrator.invoke(str(initial_message), runtime)
+                result = await orchestration_result.get()
 
-            # Check if the results is a list
-            if isinstance(result, list):
-                agent_response_callback(result[-1])
-                return
-            agent_response_callback(result)
+                # Check if the results is a list
+                if isinstance(result, list):
+                    agent_response_callback(result[-1])
+                    return
+                agent_response_callback(result)
+            except Exception as e:
+                logging.error(f"Error in hands-off agent orchestration: {e}")
+                # Provide fallback response when orchestration fails
+                fallback_message = ChatMessageContent(
+                    role=AuthorRole.ASSISTANT,
+                    content=f"I encountered an issue processing your request: {str(e)}. Please try again or contact support if the problem persists."
+                )
+                agent_response_callback(fallback_message)
 
     def __loop_executor__(self):
         # Running loop executor
         asyncio.new_event_loop().run_until_complete(self.chat_loop(self.handoff_orchestration, self.runtime, self.queue_input, self._on_agent_response_))
 
     def stop_agent(self):
+        # Set stop event to signal threads to stop
+        self.stop_event.set()
+        
+        if self.main_session is not None and self.main_session.is_alive():
+            self.main_session.join(timeout=5)  # Wait max 5 seconds for thread to stop
+            self.main_session = None
+            
         if self.coroutine is not None:
             self.coroutine.cancel()
             self.coroutine = None
+        
+        # Clear the stop event for future use
+        self.stop_event.clear()
 
     def is_running(self) -> bool:
         return self.coroutine is not None and not self.coroutine.done()
@@ -174,3 +204,22 @@ class HandsoffAgent:
 
     def set_history(self, history: ChatHistory):
         self.chat_history = history
+
+    def restart_agent(self):
+        """Stop and restart the agent - useful for recovering from errors"""
+        logging.info("Restarting hands-off agent...")
+        self.stop_agent()
+        # Clear any pending messages
+        while not self.queue_input.empty():
+            try:
+                self.queue_input.get_nowait()
+            except queue.Empty:
+                break
+        while not self.queue_output.empty():
+            try:
+                self.queue_output.get_nowait()
+            except queue.Empty:
+                break
+        # Reinitialize runtime
+        self.runtime = InProcessRuntime()
+        logging.info("Hands-off agent restarted successfully")
