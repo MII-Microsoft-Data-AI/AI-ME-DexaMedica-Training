@@ -8,7 +8,6 @@ To customize company branding:
 """
 
 import os
-
 import streamlit as st
 
 # Import document processing utilities
