@@ -188,8 +188,8 @@ class StreamingVoiceInterface:
             return
         
         self.webrtc_ctx = self.webrtc_processor.setup_webrtc_streamer(self.key)
-        self.speech_processor.start_continuous_recognition()
         self.webrtc_processor.start_audio_processing(self.webrtc_ctx)
+        self.speech_processor.start_continuous_recognition()
     
     def get_transcribed_text(self) -> Optional[str]:
         """

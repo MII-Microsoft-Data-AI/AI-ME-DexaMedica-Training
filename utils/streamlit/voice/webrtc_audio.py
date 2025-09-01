@@ -188,7 +188,9 @@ class WebRTCAudioProcessor:
 
             if audio_frames and self.audio_callback:
                 # Convert audio for Azure Speech Services
+                print("Converting audio frames for Azure...")
                 audio_data = convert_audio_for_azure(audio_frames)
+                print(f"Converted audio data length: {len(audio_data)} bytes")
                 if audio_data:
                     self.audio_callback(audio_data)
             
