@@ -497,6 +497,15 @@ async def speech_test_webrtc_ui():
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="WebRTC Speech test UI not found")
 
+@app.get("/chatbot", response_class=HTMLResponse)
+async def chatbot_app():
+    """Serve the comprehensive chatbot application"""
+    try:
+        with open("chatbot_app.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read(), status_code=200)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Chatbot application not found")
+
 # Single Agent Endpoints
 @app.get("/single/chat")
 async def single_chat(chat: str = Query(...)):
