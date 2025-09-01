@@ -394,6 +394,7 @@
 
         .typing-indicator.show {
             display: flex;
+            margin: 20px 30px
         }
 
         .typing-dot {
@@ -688,12 +689,12 @@
                 'handsoff': 'Welcome to Hands-Off Agent! I can work autonomously on complex tasks.'
             };
             
-            // Only add welcome message if this is a new chat room (empty history)
-            if (chatHistories[agent].length === 0) {
-                addSystemMessage(welcomeMessages[agent], 'success');
-            } else {
-                addSystemMessage(`Switched to ${agentTitles[agent]} chat room`);
-            }
+            // // Only add welcome message if this is a new chat room (empty history)
+            // if (chatHistories[agent].length === 0) {
+            //     addSystemMessage(welcomeMessages[agent], 'success');
+            // } else {
+            //     addSystemMessage(`Switched to ${agentTitles[agent]} chat room`);
+            // }
             
             console.log(`Agent selected: ${agent}`);
         }
@@ -712,6 +713,8 @@
             // Show typing indicator
             elements.typingIndicator.classList.add('show');
             
+            scrollToBottom()
+
             try {
                 // Send message to appropriate agent endpoint
                 const response = await sendToAgent(currentAgent, message);
@@ -1334,6 +1337,9 @@
             
             // Clear the display
             elements.chatMessages.innerHTML = '';
+            
+            // Update message count after clearing
+            updateMessageCount();
             
             // Add welcome message for the current agent
             const welcomeMessages = {
