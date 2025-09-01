@@ -24,15 +24,6 @@ from utils.streamlit.ui.sidebar import page
 from utils.streamlit.pages.agent_page import agent_page
 from utils.streamlit.pages.upload_page import upload_page
 
-@st.cache_resource
-def install_dependencies():
-    os.system('apt-get update')
-    os.system('apt-get install -y ffmpeg')
-
-if os.environ.get('CONTAINERIZE', '0') == '1':
-    install_dependencies()
-
-
 # Initialize session state
 init_session_state()
 
