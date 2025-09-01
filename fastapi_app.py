@@ -80,6 +80,20 @@ class SpeechWebSocketMessage(BaseModel):
     language: Optional[str] = "en-US"
 
 # Hello endpoint
+@app.get("/")
+async def root():
+    """Root endpoint - serve the chatbot HTML file"""
+    with open("chatbot_app.html", "r", encoding="utf-8") as f:
+        html_content = f.read()
+    return HTMLResponse(content=html_content, status_code=200)
+
+@app.get("/chatbot_app.html")
+async def chatbot_app():
+    """Serve the chatbot HTML file"""
+    with open("chatbot_app.html", "r", encoding="utf-8") as f:
+        html_content = f.read()
+    return HTMLResponse(content=html_content, status_code=200)
+
 @app.get("/hello")
 async def hello(name: Optional[str] = Query(None)):
     """Hello endpoint - equivalent to Azure Function hello route"""
@@ -405,6 +419,13 @@ async def websocket_speech_stream(websocket: WebSocket):
                         "message": "Speech recognition stopped"
                     })
                 
+                elif msg_type == "ping":
+                    # Respond to ping with pong to keep connection alive
+                    await websocket.send_json({
+                        "type": "pong",
+                        "timestamp": data.get("timestamp", "")
+                    })
+                
                 else:
                     with results_queue.mutex:
                         results_queue.queue.clear()
@@ -433,10 +454,11 @@ async def websocket_speech_stream(websocket: WebSocket):
     finally:
         # Cleanup
         stop_event.set()
-        try:
-            background_task.join()
-        except asyncio.CancelledError:
-            pass
+        if background_task:
+            try:
+                background_task.join()
+            except (RuntimeError, AttributeError):
+                pass
         
         if speech_processor:
             speech_processor.cleanup()

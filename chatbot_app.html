@@ -560,6 +560,7 @@
         let currentAgent = 'single';
         let isVoiceMode = false;
         let websocket = null;
+        let pingInterval = null;
         let audioContext = null;
         let audioWorkletNode = null;
         let audioStream = null;
@@ -1063,6 +1064,9 @@
                     language: language,
                     source: 'webrtc'
                 }));
+                
+                // Start ping interval to keep connection alive
+                startPingInterval();
             };
             
             websocket.onmessage = function(event) {
@@ -1073,6 +1077,9 @@
             websocket.onclose = function(event) {
                 console.log('Speech WebSocket disconnected');
                 updateSpeechStatus('Disconnected', 'error');
+                
+                // Stop ping interval
+                stopPingInterval();
                 
                 if (isVoiceMode) {
                     stopVoiceRecording();
@@ -1085,6 +1092,7 @@
             websocket.onerror = function(error) {
                 console.error('Speech WebSocket error:', error);
                 updateSpeechStatus('Connection Error', 'error');
+                stopPingInterval();
             };
         }
 
@@ -1118,6 +1126,11 @@
                     }
                     break;
                     
+                case 'pong':
+                    // Handle pong response from server (keep-alive confirmation)
+                    console.log('Received pong from server');
+                    break;
+                    
                 default:
                     // Handle recognition results
                     if (data.finish !== undefined) {
@@ -1138,6 +1151,34 @@
                         }
                     }
                     break;
+            }
+        }
+
+        function startPingInterval() {
+            // Send ping every 2 seconds to keep WebSocket connection alive
+            if (pingInterval) {
+                clearInterval(pingInterval);
+            }
+            
+            pingInterval = setInterval(() => {
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    websocket.send(JSON.stringify({
+                        type: 'ping',
+                        timestamp: new Date().toISOString()
+                    }));
+                    console.log('Sent ping to server');
+                } else {
+                    // Stop ping if WebSocket is not connected
+                    stopPingInterval();
+                }
+            }, 2000); // Send ping every 2 seconds
+        }
+
+        function stopPingInterval() {
+            if (pingInterval) {
+                clearInterval(pingInterval);
+                pingInterval = null;
+                console.log('Stopped ping interval');
             }
         }
 
