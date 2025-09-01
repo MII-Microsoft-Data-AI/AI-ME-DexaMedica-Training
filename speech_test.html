@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Recognition WebRTC Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background: #f4f4f4;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        button {
+            background: #007cba;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #005a87;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status.connected {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .status.disconnected {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .status.connecting {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        .recognition-results {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .result {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .result.recognizing {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+        }
+        .result.recognized {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        select {
+            padding: 8px;
+            border-radius: 3px;
+            border: 1px solid #ddd;
+            margin: 5px;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        .info {
+            background: #cce5ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .audio-visualizer {
+            background: #333;
+            border-radius: 5px;
+            height: 80px;
+            margin: 10px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .audio-bars {
+            display: flex;
+            align-items: flex-end;
+            height: 100%;
+            padding: 10px;
+        }
+        .bar {
+            background: linear-gradient(to top, #007cba, #00a8ff);
+            width: 4px;
+            margin: 0 1px;
+            border-radius: 2px 2px 0 0;
+            transition: height 0.1s ease;
+        }
+        .webrtc-stats {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎤 Speech Recognition WebRTC Test</h1>
+    
+    <div class="info">
+        <h3>WebRTC Speech Recognition:</h3>
+        <ul>
+            <li><strong>Lower Latency:</strong> Real-time audio streaming with minimal delay</li>
+            <li><strong>Better Quality:</strong> Adaptive bitrate and noise cancellation</li>
+            <li><strong>Direct Audio Processing:</strong> Raw PCM audio data for precise transcription</li>
+        </ul>
+        <p><strong>Note:</strong> Your browser will ask for microphone permissions. Please allow access for the demo to work.</p>
+    </div>
+
+    <div class="container">
+        <h3>Connection Status</h3>
+        <div id="status" class="status disconnected">Disconnected</div>
+        
+        <div class="controls">
+            <button id="connectBtn" onclick="connect()">Connect WebRTC</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+            
+            <select id="languageSelect">
+                <option value="id-ID">Indonesia</option>
+                <option value="en-US">English (US)</option>
+                <option value="en-GB">English (UK)</option>
+                <option value="fr-FR">French</option>
+                <option value="de-DE">German</option>
+                <option value="es-ES">Spanish</option>
+                <option value="it-IT">Italian</option>
+                <option value="pt-BR">Portuguese (Brazil)</option>
+                <option value="zh-CN">Chinese (Simplified)</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="ko-KR">Korean</option>
+            </select>
+            
+            <button id="startBtn" onclick="startRecognition()" disabled>Start Recognition</button>
+            <button id="stopBtn" onclick="stopRecognition()" disabled>Stop Recognition</button>
+        </div>
+        
+        <div class="audio-visualizer">
+            <div id="audioBars" class="audio-bars"></div>
+        </div>
+        
+        <div id="webrtcStats" class="webrtc-stats">
+            WebRTC Stats: Not connected
+        </div>
+    </div>
+
+    <div class="container">
+        <h3>Recognition Results</h3>
+        <div id="results" class="recognition-results">
+            <div style="color: #666; font-style: italic;">Recognition results will appear here...</div>
+        </div>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <script>
+        let websocket = null;
+        let peerConnection = null;
+        let audioStream = null;
+        let audioContext = null;
+        let audioWorkletNode = null;
+        let isRecording = false;
+        let audioAnalyzer = null;
+        let visualizerInterval = null;
+
+        // Audio visualization
+        function initAudioVisualizer() {
+            const barsContainer = document.getElementById('audioBars');
+            barsContainer.innerHTML = '';
+            
+            // Create 50 bars for visualization
+            for (let i = 0; i < 50; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.height = '2px';
+                barsContainer.appendChild(bar);
+            }
+        }
+
+        function updateAudioVisualizer() {
+            if (!audioAnalyzer || !isRecording) return;
+            
+            const bufferLength = audioAnalyzer.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            audioAnalyzer.getByteFrequencyData(dataArray);
+            
+            const bars = document.querySelectorAll('.bar');
+            const step = Math.floor(bufferLength / bars.length);
+            
+            bars.forEach((bar, index) => {
+                const value = dataArray[index * step];
+                const height = (value / 255) * 70 + 2; // Scale to 2-72px
+                bar.style.height = `${height}px`;
+            });
+        }
+
+        // WebRTC Audio Worklet for processing raw PCM data
+        const audioWorkletProcessor = `
+            class AudioProcessor extends AudioWorkletProcessor {
+                constructor() {
+                    super();
+                    this.isRecording = false;
+                    
+                    this.port.onmessage = (event) => {
+                        if (event.data.command === 'start') {
+                            this.isRecording = true;
+                        } else if (event.data.command === 'stop') {
+                            this.isRecording = false;
+                        }
+                    };
+                }
+                
+                process(inputs, outputs, parameters) {
+                    if (!this.isRecording) return true;
+                    
+                    const input = inputs[0];
+                    if (input && input[0]) {
+                        // Convert Float32Array to Int16Array (PCM 16-bit)
+                        const samples = input[0];
+                        const pcmBuffer = new Int16Array(samples.length);
+                        
+                        for (let i = 0; i < samples.length; i++) {
+                            // Convert from [-1, 1] to [-32768, 32767]
+                            const sample = Math.max(-1, Math.min(1, samples[i]));
+                            pcmBuffer[i] = sample * 0x7FFF;
+                        }
+                        
+                        // Send PCM data to main thread
+                        this.port.postMessage({
+                            type: 'audioData',
+                            data: pcmBuffer.buffer
+                        });
+                    }
+                    
+                    return true;
+                }
+            }
+            
+            registerProcessor('audio-processor', AudioProcessor);
+        `;
+
+        // WebSocket connection management
+        function connect() {
+            updateStatus('Connecting...', 'connecting');
+            
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/speech/stream`;
+            
+            websocket = new WebSocket(wsUrl);
+            
+            websocket.onopen = function(event) {
+                updateStatus('WebSocket Connected', 'connected');
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+                addResult('Connected to speech recognition service', 'recognized');
+                
+                // Send initial configuration
+                const language = document.getElementById('languageSelect').value;
+                websocket.send(JSON.stringify({
+                    type: 'config',
+                    language: language,
+                    source: 'webrtc'
+                }));
+                
+                // Initialize WebRTC after WebSocket connection
+                initWebRTC();
+            };
+            
+            websocket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+            
+            websocket.onclose = function(event) {
+                updateStatus('Disconnected', 'disconnected');
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('disconnectBtn').disabled = true;
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = true;
+                addResult('Disconnected from speech recognition service', 'error');
+                
+                if (isRecording) {
+                    stopRecording();
+                }
+                cleanupWebRTC();
+            };
+            
+            websocket.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                addResult('WebSocket connection error', 'error');
+                updateStatus('Connection Error', 'disconnected');
+            };
+        }
+
+        function disconnect() {
+            if (isRecording) {
+                stopRecognition();
+            }
+            
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+            }
+            
+            cleanupWebRTC();
+        }
+
+        // WebRTC Setup
+        async function initWebRTC() {
+            try {
+                // Get user media with high quality audio settings
+                audioStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        sampleRate: 16000,      // Optimal for speech recognition
+                        channelCount: 1,        // Mono
+                        echoCancellation: true,  // Reduce echo
+                        noiseSuppression: true,  // Reduce background noise
+                        autoGainControl: true,   // Automatic gain control
+                        sampleSize: 16          // 16-bit samples
+                    }
+                });
+
+                // Setup audio context for processing
+                audioContext = new AudioContext({ sampleRate: 16000 });
+                
+                // Create audio worklet
+                const blob = new Blob([audioWorkletProcessor], { type: 'application/javascript' });
+                const workletUrl = URL.createObjectURL(blob);
+                await audioContext.audioWorklet.addModule(workletUrl);
+                URL.revokeObjectURL(workletUrl);
+                
+                // Create worklet node
+                audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor');
+                audioWorkletNode.port.onmessage = (event) => {
+                    if (event.data.type === 'audioData' && isRecording && websocket && websocket.readyState === WebSocket.OPEN) {
+                        // Send raw PCM data directly to WebSocket
+                        const base64Data = btoa(String.fromCharCode(...new Uint8Array(event.data.data)));
+                        websocket.send(JSON.stringify({
+                            type: 'audio',
+                            data: base64Data,
+                            format: 'pcm16',
+                            sampleRate: 16000
+                        }));
+                    }
+                };
+
+                // Setup audio analyzer for visualization
+                audioAnalyzer = audioContext.createAnalyser();
+                audioAnalyzer.fftSize = 256;
+                
+                // Connect audio nodes
+                const source = audioContext.createMediaStreamSource(audioStream);
+                source.connect(audioWorkletNode);
+                source.connect(audioAnalyzer);
+                
+                // Initialize visualizer
+                initAudioVisualizer();
+                
+                document.getElementById('startBtn').disabled = false;
+                addResult('✅ WebRTC audio pipeline initialized', 'recognized');
+                
+                updateWebRTCStats();
+                
+            } catch (error) {
+                console.error('Error initializing WebRTC:', error);
+                addResult(`❌ Error initializing WebRTC: ${error.message}`, 'error');
+                updateStatus('WebRTC Setup Failed', 'disconnected');
+            }
+        }
+
+        function cleanupWebRTC() {
+            if (visualizerInterval) {
+                clearInterval(visualizerInterval);
+                visualizerInterval = null;
+            }
+            
+            if (audioWorkletNode) {
+                audioWorkletNode.disconnect();
+                audioWorkletNode = null;
+            }
+            
+            if (audioContext && audioContext.state !== 'closed') {
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+            }
+            
+            if (audioAnalyzer) {
+                audioAnalyzer = null;
+            }
+            
+            document.getElementById('webrtcStats').textContent = 'WebRTC Stats: Not connected';
+        }
+
+        function updateWebRTCStats() {
+            if (!audioStream) return;
+            
+            const track = audioStream.getAudioTracks()[0];
+            if (track) {
+                const settings = track.getSettings();
+                const statsText = `🎵 Sample Rate: ${settings.sampleRate}Hz | Channels: ${settings.channelCount} | Echo Cancellation: ${settings.echoCancellation ? 'On' : 'Off'}`;
+                document.getElementById('webrtcStats').textContent = statsText;
+            }
+        }
+
+        function updateStatus(message, className) {
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = message;
+            statusElement.className = `status ${className}`;
+        }
+
+        // Recognition control
+        function startRecognition() {
+            if (!audioWorkletNode || !websocket || websocket.readyState !== WebSocket.OPEN) {
+                addResult('❌ WebRTC or WebSocket not ready', 'error');
+                return;
+            }
+            
+            // Resume audio context if suspended
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            
+            // Send start message to WebSocket
+            websocket.send(JSON.stringify({type: 'start'}));
+            
+            // Start audio processing
+            audioWorkletNode.port.postMessage({command: 'start'});
+            
+            isRecording = true;
+            
+            // Start visualizer
+            visualizerInterval = setInterval(updateAudioVisualizer, 50);
+            
+            addResult('🎙️ Started WebRTC audio recognition...', 'recognizing');
+        }
+
+        function stopRecognition() {
+            // Send stop message to WebSocket
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({type: 'stop'}));
+            }
+            
+            stopRecording();
+        }
+
+        function stopRecording() {
+            if (audioWorkletNode) {
+                audioWorkletNode.port.postMessage({command: 'stop'});
+            }
+            
+            isRecording = false;
+            
+            if (visualizerInterval) {
+                clearInterval(visualizerInterval);
+                visualizerInterval = null;
+            }
+            
+            // Clear visualizer
+            const bars = document.querySelectorAll('.bar');
+            bars.forEach(bar => bar.style.height = '2px');
+            
+            addResult('⏹️ Stopped audio recognition', 'recognized');
+        }
+
+        function handleWebSocketMessage(data) {
+            console.log('Received:', data);
+            
+            switch(data.type) {
+                case 'config_success':
+                    addResult(`⚙️ ${data.message}`, 'recognized');
+                    break;
+                    
+                case 'start_success':
+                    addResult(`▶️ ${data.message}`, 'recognized');
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    break;
+                    
+                case 'stop_success':
+                    addResult(`⏹️ ${data.message}`, 'recognized');
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('stopBtn').disabled = true;
+                    break;
+                    
+                case 'error':
+                    addResult(`❌ Error: ${data.message}`, 'error');
+                    break;
+                    
+                default:
+                    // Handle recognition results
+                    if (data.finish !== undefined) {
+                        const resultType = data.finish ? 'recognized' : 'recognizing';
+                        const prefix = data.finish ? '✅ [FINAL] ' : '🔄 [INTERIM] ';
+                        addResult(prefix + data.text, resultType);
+
+                        if (data.finish) {
+                            stopRecognition();
+                        }
+                    }
+                    break;
+            }
+        }
+
+        function addResult(text, type) {
+            const results = document.getElementById('results');
+            const resultElement = document.createElement('div');
+            resultElement.className = `result ${type}`;
+            resultElement.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong> - ${text}`;
+            results.appendChild(resultElement);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '<div style="color: #666; font-style: italic;">Recognition results will appear here...</div>';
+        }
+
+        // Language change handler
+        document.getElementById('languageSelect').addEventListener('change', function() {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                const language = this.value;
+                websocket.send(JSON.stringify({
+                    type: 'config',
+                    language: language,
+                    source: 'webrtc'
+                }));
+                addResult(`🌐 Language changed to: ${language}`, 'recognized');
+            }
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (isRecording) {
+                stopRecording();
+            }
+            if (websocket) {
+                websocket.close();
+            }
+            cleanupWebRTC();
+        });
+    </script>
+</body>
+</html>
