@@ -9,10 +9,13 @@ To customize company branding:
 
 import os
 
-if os.environ.get('CONTAINERIZE', '0') == '1':
-    # Install libasound2-dev for audio support in Docker
+@st.cache_resource
+def install_dependencies():
     os.system('apt-get update')
-    os.system('apt-get install -y libasound2-dev pulseaudio')
+    os.system('apt-get install -y ffmpeg')
+
+if os.environ.get('CONTAINERIZE', '0') == '1':
+    install_dependencies()
 
 import streamlit as st
 
