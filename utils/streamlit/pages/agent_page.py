@@ -1,6 +1,7 @@
 import streamlit as st
 import asyncio
 import json
+import os
 
 # Import utilities
 from utils.history import (
@@ -62,13 +63,16 @@ def agent_page():
         st.info(agent_descriptions[agent_choice])
 
         # Voice feature status
+        is_containerize = os.environ.get("CONTAINERIZE", "0") == 1
+        speech_choice = ["Streaming (Real-time)"] if is_containerize else ["Basic (Click to Record)", "Streaming (Real-time)"] 
+
         if speech_key and speech_endpoint:
             st.success("🎤 Voice input enabled")
             
             # Voice interface mode selector
             voice_mode = st.selectbox(
                 "Voice Input Mode",
-                ["Basic (Click to Record)", "Streaming (Real-time)"],
+                speech_choice,
                 index=0,
                 help="Choose between basic microphone recording or real-time WebRTC streaming"
             )

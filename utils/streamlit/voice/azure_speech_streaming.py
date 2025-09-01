@@ -154,10 +154,12 @@ class AzureSpeechStreamingProcessor:
                 self.queue_output.put(result)
     
     def _on_session_started(self, evt):
+        print("Session started event: {}".format(evt))
         """Handle session start"""
         logger.info("Speech recognition session started")
     
     def _on_session_stopped(self, evt):
+        print("Session stop event: {}".format(evt))
         """Handle session stop"""
         logger.info("Speech recognition session stopped")
         self.is_running = False
@@ -213,9 +215,12 @@ class AzureSpeechStreamingProcessor:
         Args:
             audio_data: Audio data in 16kHz mono 16-bit PCM format
         """
+        print("Received audio data to push")
         if self.audio_stream and self.is_running:
             try:
+                print(f"Pushing audio data of length: {len(audio_data)} bytes")
                 self.audio_stream.write(audio_data)
+                print("Audio data pushed successfully")
             except Exception as e:
                 logger.error(f"Failed to push audio data: {e}")
     

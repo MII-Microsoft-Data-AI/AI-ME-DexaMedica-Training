@@ -9,14 +9,6 @@ To customize company branding:
 
 import os
 
-@st.cache_resource
-def install_dependencies():
-    os.system('apt-get update')
-    os.system('apt-get install -y ffmpeg')
-
-if os.environ.get('CONTAINERIZE', '0') == '1':
-    install_dependencies()
-
 import streamlit as st
 
 # Import document processing utilities
@@ -32,6 +24,15 @@ from utils.streamlit.session import init_session_state
 from utils.streamlit.ui.sidebar import page
 from utils.streamlit.pages.agent_page import agent_page
 from utils.streamlit.pages.upload_page import upload_page
+
+@st.cache_resource
+def install_dependencies():
+    os.system('apt-get update')
+    os.system('apt-get install -y ffmpeg')
+
+if os.environ.get('CONTAINERIZE', '0') == '1':
+    install_dependencies()
+
 
 # Initialize session state
 init_session_state()
