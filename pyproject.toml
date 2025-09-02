@@ -20,8 +20,5 @@ dependencies = [
     "python-dotenv==1.1.1",
     "python-multipart>=0.0.6",
     "semantic-kernel==1.35.3",
-    "streamlit==1.49.0",
-    "streamlit-webrtc==0.63.4",
-    "twilio==9.7.2",
     "uvicorn==0.24.0",
 ]
