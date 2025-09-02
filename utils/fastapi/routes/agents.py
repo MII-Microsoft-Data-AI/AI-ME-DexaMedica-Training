@@ -2,19 +2,22 @@
 Agent API Routes
 ================
 
-FastAPI routes for AI agent interactions (Single, Multi, and Hands-off agents).
+FastAPI routes for AI agent interactions (Single, Multi, Hands-off, and Foundry agents).
 """
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
 import logging
 import json
+import os
 
 # Import agents
 from single_agent.agent import AgentSingleton
 from multi_agent.agent import MultiAgent
 from hands_off_agent.agent import HandsoffAgent
+from fondary_agent.agent import FondaryAgent
 
 # Import utilities
 from utils.history import chat_history_from_base64, chat_history_to_base64, chat_history_compress, chat_history_decompress
@@ -24,6 +27,13 @@ from utils.state import state_compress, state_decompress, state_to_base64, state
 agent = AgentSingleton()
 multi_agent = MultiAgent()
 hands_off_agent = HandsoffAgent()
+foundry_agent = FondaryAgent()
+try:
+    
+    logging.info("Foundry Agent initialized successfully")
+except Exception as e:
+    logging.error(f"Failed to initialize Foundry Agent: {e}")
+    foundry_agent = None
 
 # Pydantic models
 class ChatRequest(BaseModel):
@@ -346,3 +356,101 @@ async def handsoff_state_import_compress(request: ImportRequest):
     hands_off_agent.set_state(state_str)
 
     return {"message": "Successfully updating agent state."}
+
+# Foundry Agent Router
+foundry_router = APIRouter(prefix="/foundry", tags=["Foundry Agent"])
+
+@foundry_router.post("/chat")
+async def foundry_chat(request: ChatRequest):
+    """Foundry agent streaming chat endpoint"""
+    logging.info('FastAPI foundry chat endpoint processed a request.')
+
+    if not foundry_agent:
+        raise HTTPException(status_code=503, detail="Foundry Agent is not available. Check configuration.")
+
+    if not request.chat:
+        raise HTTPException(status_code=400, detail="No chat message provided in the request body.")
+
+    import queue
+    import threading
+    
+    def generate_response():
+        """Generator function for real-time streaming response"""
+        try:
+            # Create a queue for real-time chunk streaming
+            chunk_queue = queue.Queue()
+            
+            # Start streaming in a separate thread
+            def run_streaming():
+                foundry_agent.stream_chat_async(request.chat, chunk_queue)
+            
+            thread = threading.Thread(target=run_streaming)
+            thread.start()
+            
+            # Stream chunks as they arrive
+            while True:
+                try:
+                    # Get chunk from queue with timeout
+                    chunk = chunk_queue.get(timeout=30)  # 30 second timeout
+                    
+                    if chunk == "[[DONE]]":
+                        break
+                    elif chunk.startswith("ERROR:"):
+                        yield f"data: {json.dumps({'error': chunk[6:]})}\n\n"
+                        break
+                    else:
+                        yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+                        
+                except queue.Empty:
+                    # Timeout - send keepalive
+                    yield f"data: {json.dumps({'keepalive': True})}\n\n"
+                    continue
+                except Exception as e:
+                    logging.error(f"Error getting chunk from queue: {e}")
+                    yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                    break
+            
+            # Wait for thread to complete
+            thread.join(timeout=5)
+            
+            # Send completion signal
+            yield f"data: {json.dumps({'chunk': '[[DONE]]'})}\n\n"
+            
+        except Exception as e:
+            logging.error(f"Error in foundry chat streaming: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(
+        generate_response(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Content-Type": "text/plain; charset=utf-8"
+        }
+    )
+
+@foundry_router.get("/new-chat")
+async def foundry_new_chat():
+    """Start a new chat thread for Foundry agent"""
+    logging.info('FastAPI foundry new-chat endpoint processed a request.')
+
+    if not foundry_agent:
+        raise HTTPException(status_code=503, detail="Foundry Agent is not available. Check configuration.")
+
+    try:
+        foundry_agent.new_chat()
+        return {"message": "New chat thread created successfully"}
+    except Exception as e:
+        logging.error(f"Error creating new foundry chat thread: {e}")
+        raise HTTPException(status_code=500, detail=f"Error creating new chat thread: {str(e)}")
+
+@foundry_router.get("/status")
+async def foundry_status():
+    """Get Foundry agent status"""
+    logging.info('FastAPI foundry status endpoint processed a request.')
+    
+    return {
+        "available": foundry_agent is not None,
+        "thread_id": foundry_agent.thread.id if foundry_agent else None
+    }
