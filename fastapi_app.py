@@ -111,6 +111,12 @@ async def hello_post(request: HelloRequest):
             "message": "This HTTP triggered function executed successfully. Pass a name in the request body for a personalized response."
         }
 
+@app.get("/config/partner-name")
+async def get_partner_name():
+    """Get partner name from environment variable for footer display"""
+    partner_name = os.getenv("PARTNER_NAME")
+    return {"partnerName": partner_name}
+
 # Document Upload Endpoints
 @app.post("/documents/upload")
 async def upload_document(file: UploadFile = File(...)):

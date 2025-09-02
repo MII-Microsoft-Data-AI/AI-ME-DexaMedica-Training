@@ -144,6 +144,7 @@
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
+            margin-top: 10px;
         }
 
         .upload-area:hover {
@@ -439,6 +440,25 @@
             }
         }
 
+        /* Footer Styles */
+        .app-footer {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 20px 30px;
+            text-align: center;
+            font-size: 0.9rem;
+            border-top: 1px solid #374151;
+        }
+
+        .app-footer .company-info {
+            margin-bottom: 5px;
+        }
+
+        .app-footer .tech-info {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
         /* Utility classes */
         .hidden {
             display: none !important;
@@ -476,7 +496,7 @@
                     </button>
                     <button class="agent-option" data-agent="handsoff">
                         <span class="agent-name">🚀 Hands-Off Agent <span class="message-count" id="count-handsoff">0</span></span>
-                        <span class="agent-desc">Autonomous workflow</span>
+                        <span class="agent-desc">Autonomous workflow w/ Document Search Agent</span>
                     </button>
                 </div>
 
@@ -555,6 +575,16 @@
                 </div>
             </div>
         </div>
+
+        <!-- Footer -->
+        <div class="app-footer">
+            <div class="company-info" id="companyInfo">
+                Created by Mitra Integrasi Informatika - Microsoft Azure Team
+            </div>
+            <div class="tech-info">
+                Using Azure AI Foundry and Azure OpenAI Technology
+            </div>
+        </div>
     </div>
 
     <script>
@@ -611,6 +641,9 @@
             // Initialize message count indicators
             updateMessageCount();
             
+            // Initialize footer with partner name
+            initializeFooter();
+            
             // Add initial welcome message if no history exists
             if (chatHistories[currentAgent].length === 0) {
                 addSystemMessage('Welcome to Single Agent! I\'m a general-purpose assistant ready to help.', 'success');
@@ -654,6 +687,29 @@
 
             // Language selection
             elements.languageSelect.addEventListener('change', updateSpeechLanguage);
+        }
+
+        async function initializeFooter() {
+            try {
+                // Fetch partner name from backend
+                const response = await fetch('/config/partner-name');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const companyInfoElement = document.getElementById('companyInfo');
+                    
+                    if (data.partnerName) {
+                        companyInfoElement.textContent = `Created by Mitra Integrasi Informatika - Microsoft Azure Team for ${data.partnerName}`;
+                    } else {
+                        companyInfoElement.textContent = 'Created by Mitra Integrasi Informatika - Microsoft Azure Team';
+                    }
+                } else {
+                    console.log('Partner name endpoint not available, using default footer text');
+                }
+            } catch (error) {
+                console.log('Could not fetch partner name:', error.message);
+                // Footer will keep default text if fetch fails
+            }
         }
 
         // Placeholder functions - will be implemented in next steps

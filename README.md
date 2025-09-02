@@ -54,6 +54,9 @@ pip install -r requirements.txt
 Copy `.env.example` to `.env` and configure your Azure services:
 
 ```env
+# Partner Name for Footer
+PARTNER_NAME=Your Company Name
+
 # Azure OpenAI
 OPENAI_KEY=your_openai_key
 OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
