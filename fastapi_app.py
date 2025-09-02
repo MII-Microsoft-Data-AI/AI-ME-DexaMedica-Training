@@ -13,6 +13,7 @@ import asyncio
 import queue
 import threading
 import base64
+import zlib
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -44,6 +45,44 @@ app = FastAPI(
     description="FastAPI equivalent of the Azure Functions semantic kernel application with document upload capabilities",
     version="1.0.0"
 )
+
+# Compression utilities for audio data
+def compress_base64(data: str) -> str:
+    """Compress base64 encoded data using zlib"""
+    try:
+        # Decode base64 to bytes
+        decoded_data = base64.b64decode(data)
+        
+        # Compress using zlib
+        compressed_data = zlib.compress(decoded_data)
+        
+        # Encode back to base64
+        compressed_base64 = base64.b64encode(compressed_data).decode('utf-8')
+        
+        compression_ratio = (1 - len(compressed_data) / len(decoded_data)) * 100
+        logging.debug(f"Compression ratio: {compression_ratio:.1f}% ({len(decoded_data)} -> {len(compressed_data)} bytes)")
+        
+        return compressed_base64
+    except Exception as e:
+        logging.error(f"Error compressing data: {e}")
+        return data  # Return original data if compression fails
+
+def decompress_base64(data: str) -> str:
+    """Decompress zlib compressed base64 encoded data"""
+    try:
+        # Decode base64 to bytes
+        compressed_data = base64.b64decode(data)
+        
+        # Decompress using zlib
+        decompressed_data = zlib.decompress(compressed_data)
+        
+        # Encode back to base64
+        decompressed_base64 = base64.b64encode(decompressed_data).decode('utf-8')
+        
+        return decompressed_base64
+    except Exception as e:
+        logging.error(f"Error decompressing data: {e}")
+        return data  # Return original data if decompression fails
 
 # Initialize agents (same as in function_app.py)
 agent = AgentSingleton()
@@ -382,13 +421,20 @@ async def websocket_speech_stream(websocket: WebSocket):
                     
                     audio_data = data.get("data")
                     audio_format = data.get("format", "webm")  # Default to webm for backward compatibility
+                    is_compressed = data.get("compressed", False)  # Check if data is compressed
                     
                     if audio_data:
                         try:
+                            logging.debug(f"Received audio chunk of size: {len(audio_data)} elem, format: {audio_format}, compressed: {is_compressed}")
+                            # Handle compressed data
+                            if is_compressed:
+                                logging.debug("Decompressing audio data...")
+                                audio_data = decompress_base64(audio_data)
+                                logging.debug("Audio data decompressed successfully")
+                            
                             # Decode base64 audio data
                             audio_bytes = base64.b64decode(audio_data)
                             audio_bytes_frames.append(audio_bytes)
-                            logging.debug(f"Received audio chunk of size: {len(audio_bytes_frames)} elem, format: {audio_format}")
                             
                             # Use the new convert_audio method with format detection
                             audio_data_bytes = speech_processor.convert_audio(audio_bytes, audio_format)

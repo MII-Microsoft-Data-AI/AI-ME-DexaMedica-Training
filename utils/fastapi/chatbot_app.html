@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🤖 AI Assistant - Multi-Agent Chatbot</title>
+    
+    <!-- Include pako library for compression -->
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -605,6 +609,53 @@
             'multi': [],
             'handsoff': []
         };
+
+        // Compression utilities using pako
+        function compressBase64(base64Data) {
+            try {
+                // Convert base64 to Uint8Array
+                const binaryString = atob(base64Data);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                
+                // Compress using pako
+                const compressed = pako.deflate(bytes);
+                
+                // Convert back to base64
+                const compressedBase64 = btoa(String.fromCharCode(...compressed));
+                
+                console.log(`Compression ratio: ${((1 - compressed.length / bytes.length) * 100).toFixed(1)}% (${bytes.length} -> ${compressed.length} bytes)`);
+                
+                return compressedBase64;
+            } catch (error) {
+                console.error('Error compressing data:', error);
+                return base64Data; // Return original data if compression fails
+            }
+        }
+
+        function decompressBase64(compressedBase64) {
+            try {
+                // Convert base64 to Uint8Array
+                const binaryString = atob(compressedBase64);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                
+                // Decompress using pako
+                const decompressed = pako.inflate(bytes);
+                
+                // Convert back to base64
+                const decompressedBase64 = btoa(String.fromCharCode(...decompressed));
+                
+                return decompressedBase64;
+            } catch (error) {
+                console.error('Error decompressing data:', error);
+                return compressedBase64; // Return original data if decompression fails
+            }
+        }
 
         // DOM elements
         const elements = {
@@ -1313,13 +1364,16 @@
                 audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor');
                 audioWorkletNode.port.onmessage = (event) => {
                     if (event.data.type === 'audioData' && isVoiceMode && websocket && websocket.readyState === WebSocket.OPEN) {
-                        // Send audio data to WebSocket
+                        // Send audio data to WebSocket with compression
                         const base64Data = btoa(String.fromCharCode(...new Uint8Array(event.data.data)));
+                        const compressedData = compressBase64(base64Data);
+                        
                         websocket.send(JSON.stringify({
                             type: 'audio',
-                            data: base64Data,
+                            data: compressedData,
                             format: 'pcm16',
-                            sampleRate: 16000
+                            sampleRate: 16000,
+                            compressed: true // Indicate that data is compressed
                         }));
                     }
                 };
