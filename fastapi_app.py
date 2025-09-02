@@ -7,7 +7,7 @@ import logging
 
 # Import route modules
 from utils.fastapi.routes.core import router as core_router
-from utils.fastapi.routes.agents import single_router, multi_router, handsoff_router
+from utils.fastapi.routes.agents import single_router, multi_router, handsoff_router, foundry_router
 from utils.fastapi.routes.documents import router as documents_router
 from utils.fastapi.routes.speech import router as speech_router
 from utils.fastapi.routes.lights import router as lights_router
@@ -62,6 +62,10 @@ app = FastAPI(
             "description": "Autonomous hands-off agent interactions with state management.",
         },
         {
+            "name": "Foundry Agent",
+            "description": "Azure AI Foundry agent with streaming chat capabilities.",
+        },
+        {
             "name": "Documents",
             "description": "Document upload, processing, and AI search indexing operations.",
         },
@@ -78,6 +82,7 @@ app.include_router(lights_router)
 app.include_router(single_router)
 app.include_router(multi_router)  
 app.include_router(handsoff_router)
+app.include_router(foundry_router)
 app.include_router(documents_router)
 app.include_router(speech_router)
 

@@ -77,6 +77,10 @@ AI_SEARCH_INDEX=documents
 # Azure Blob Storage
 BLOB_STORAGE_CONNECTION_STRING=your_blob_storage_connection_string
 BLOB_CONTAINER_NAME=your_container_name
+
+# Azure AI Foundry (if applicable)
+FOUNDRY_ENDPOINT=https://your-foundry-endpoint
+FOUNDRY_AGENT_ID=registered_agent_id
 ```
 
 ## 🚀 Running the Application
