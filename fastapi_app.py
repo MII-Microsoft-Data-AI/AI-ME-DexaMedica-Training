@@ -23,7 +23,7 @@ from multi_agent.agent import MultiAgent
 from hands_off_agent.agent import HandsoffAgent
 
 # Import document upload utilities
-from document_upload_cli.utils import file_eligible, ocr, chunk_text, embed, upload_to_ai_search_studio, init_index
+from document_upload_cli.utils import file_eligible, ocr, chunk_text, embed, upload_to_ai_search_studio, init_index, upload_to_blob, init_container
 
 # Import speech streaming utilities
 from utils.fastapi.azure_speech_streaming import AzureSpeechStreamingProcessor
@@ -89,12 +89,13 @@ agent = AgentSingleton()
 multi_agent = MultiAgent()
 hands_off_agent = HandsoffAgent()
 
-# Initialize search index for document uploads
+# Initialize search index and blob container for document uploads
 try:
     init_index()
-    logging.info("AI Search index initialized successfully")
+    init_container()
+    logging.info("AI Search index and blob container initialized successfully")
 except Exception as e:
-    logging.warning(f"Failed to initialize AI Search index: {e}")
+    logging.warning(f"Failed to initialize AI Search index or blob container: {e}")
     logging.warning("Document upload functionality may not work properly")
 
 # Pydantic models for request bodies
@@ -170,7 +171,8 @@ async def upload_document(file: UploadFile = File(...)):
         "OPENAI_ENDPOINT",
         "AI_SEARCH_KEY",
         "AI_SEARCH_ENDPOINT",
-        "AI_SEARCH_INDEX"
+        "AI_SEARCH_INDEX",
+        "BLOB_STORAGE_CONNECTION_STRING"
     ]
     missing = [env for env in required_envs if not os.getenv(env)]
     if missing:
@@ -199,6 +201,10 @@ async def upload_document(file: UploadFile = File(...)):
             
             logging.info(f"Processing file: {file.filename}")
             
+            # Upload file to blob storage first
+            blob_url = upload_to_blob(temp_file.name)
+            logging.info(f"Processing file: {file.filename} - Blob Upload Done")
+            
             # Process the document
             ocr_result = ocr(temp_file.name)
             logging.info(f"Processing file: {file.filename} - OCR Done")
@@ -210,7 +216,7 @@ async def upload_document(file: UploadFile = File(...)):
             def upload_chunk(i, text_chunk):
                 logging.info(f"Processing file: {file.filename} - Uploading chunk {i+1}/{len(chunks)}")
                 embeddings = embed(text_chunk)
-                upload_to_ai_search_studio(i, file.filename, text_chunk, embeddings)
+                upload_to_ai_search_studio(i, file.filename, text_chunk, embeddings, blob_url)
                 logging.info(f"Processing file: {file.filename} - Uploaded chunk {i+1}/{len(chunks)}")
                 return i
             
@@ -272,14 +278,15 @@ async def get_supported_document_types():
 
 @app.post("/documents/init-index")
 async def initialize_search_index():
-    """Initialize the AI Search index for document storage"""
+    """Initialize the AI Search index and blob container for document storage"""
     logging.info('FastAPI init search index endpoint processed a request.')
     
     # Environment check
     required_envs = [
         "AI_SEARCH_KEY",
         "AI_SEARCH_ENDPOINT", 
-        "AI_SEARCH_INDEX"
+        "AI_SEARCH_INDEX",
+        "BLOB_STORAGE_CONNECTION_STRING"
     ]
     missing = [env for env in required_envs if not os.getenv(env)]
     if missing:
@@ -290,7 +297,8 @@ async def initialize_search_index():
     
     try:
         init_index()
-        return {"message": "AI Search index initialized successfully", "status": "success"}
+        init_container()
+        return {"message": "AI Search index and blob container initialized successfully", "status": "success"}
     except Exception as e:
         logging.error(f"Error initializing search index: {str(e)}")
         raise HTTPException(

@@ -1,6 +1,6 @@
 import sys
 
-from document_upload_cli.utils import file_eligible, ocr, chunk_text, embed, upload_to_ai_search_studio, init_index
+from document_upload_cli.utils import file_eligible, ocr, chunk_text, embed, upload_to_ai_search_studio, init_index, upload_to_blob, init_container
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -15,7 +15,8 @@ def main():
         "OPENAI_ENDPOINT",
         "AI_SEARCH_KEY",
         "AI_SEARCH_ENDPOINT",
-        "AI_SEARCH_INDEX"
+        "AI_SEARCH_INDEX",
+        "BLOB_STORAGE_CONNECTION_STRING"
     ]
     missing = [env for env in required_envs if not os.getenv(env)]
     if missing:
@@ -38,6 +39,11 @@ def main():
         sys.exit(1)
 
     print(f"Processing file: {file_path}")
+    
+    # Upload to Blob
+    blob_url = upload_to_blob(file_path)
+    print(f"Processing file: {file_path} - Blob Upload Done")
+    
     ocr_result = ocr(file_path)
     print(f"Processing file: {file_path} - OCR Done")
     chunks = chunk_text(ocr_result)
@@ -48,7 +54,7 @@ def main():
     def upload_chunk(i, text_chunk):
         print(f"Processing file: {file_path} - Uploading chunk {i+1}/{len(chunks)}")
         embeddings = embed(text_chunk)
-        upload_to_ai_search_studio(i, file_name, text_chunk, embeddings)
+        upload_to_ai_search_studio(i, file_name, text_chunk, embeddings, blob_url)
         print(f"Processing file: {file_path} - Uploaded chunk {i+1}/{len(chunks)}")
 
 
@@ -65,4 +71,5 @@ def main():
 
 if __name__ == "__main__":
     init_index()
+    init_container()
     main()
