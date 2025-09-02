@@ -96,8 +96,9 @@ def init_index():
         SimpleField(name="id", type=SearchFieldDataType.String, key=True),
         SimpleField(name="chunk_num", type=SearchFieldDataType.Int64, filterable=True),
         SimpleField(name="file_name", type=SearchFieldDataType.String, filterable=True),
-        SimpleField(name="blob_url", type=SearchFieldDataType.String, filterable=True),
         SimpleField(name="title", type=SearchFieldDataType.String, filterable=True),
+        SimpleField(name="blob_name", type=SearchFieldDataType.String, filterable=True),
+        SimpleField(name="blob_url", type=SearchFieldDataType.String, filterable=True),
         SearchableField(name="content", type=SearchFieldDataType.String, searchable=True),
         SearchField(name="content_vector", type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
                 searchable=True, vector_search_dimensions=1536, vector_search_profile_name="vector-profile"),
@@ -112,7 +113,7 @@ def init_container():
         container_service_client = blob_service_client.get_container_client(BLOB_CONTAINER_NAME)
         container_service_client.create_container()
     except Exception as e:
-        print(f"Container {BLOB_CONTAINER_NAME} may already exist. {e}")
+        print(f"Container {BLOB_CONTAINER_NAME} may already exist.")
 
 
 def file_eligible(file_path: str) -> bool:
@@ -166,9 +167,9 @@ def upload_to_blob(file_path: str) -> str:
     with open(file_path, "rb") as data:
         blob_client.upload_blob(data, overwrite=True)
 
-    return blob_client.url
+    return blob_file_name, blob_client.url
 
-def upload_to_ai_search_studio(chunk_num: int, file_name: str, content: str, embeddings: list[float], blob_url: str) -> None:
+def upload_to_ai_search_studio(chunk_num: int, file_name: str, content: str, embeddings: list[float], blob_url: str, blob_name: str) -> None:
     document = {
         "id": encode_key(file_name, chunk_num),
         "file_name": file_name,
@@ -176,7 +177,8 @@ def upload_to_ai_search_studio(chunk_num: int, file_name: str, content: str, emb
         "content": content,
         "content_vector": embeddings,
         "title": file_name,
-        "blob_url": blob_url
+        "blob_url": blob_url,
+        "blob_name": blob_name
     }
 
     aisearch_client.upload_documents([document])
@@ -194,7 +196,7 @@ def main():
         file_path = os.path.join('./data', file)
 
         # Upload to Blob
-        blob_url = upload_to_blob(file_path)
+        blob_name, blob_url = upload_to_blob(file_path)
 
         # Do OCR
         ocr_result = ocr(file_path)
@@ -205,7 +207,7 @@ def main():
         for text_chunk in chunks:
             embeddings = embed(text_chunk)
 
-            upload_to_ai_search_studio(file_path, text_chunk, embeddings, blob_url)
+            upload_to_ai_search_studio(file_path, text_chunk, embeddings, blob_url, blob_name)
 
 if __name__ == "__main__":
     init_index()

@@ -1,6 +1,7 @@
 from hands_off_agent.common import COMMON_AGENT_SERVICE
 from semantic_kernel.agents import ChatCompletionAgent
 from hands_off_agent.agents.document_agent.plugins.ai_search import search_plugin
+from hands_off_agent.agents.document_agent.plugins.blob import BlobPlugin
 
 import logging
 from semantic_kernel.utils.logging import setup_logging
@@ -12,7 +13,7 @@ logging.debug("Initializing DocumentSearchAgent")
 document_search_agent = ChatCompletionAgent(
     name="DocumentSearchAgent",
     description="An assistant to help users find or search documents and summarize them.",
-    instructions="Handle document search requests using ai search plugin. If the user ask your name, tell them you're auditama. When using any tools, plugins, or transferring to other agents, let me know what you're doing explicitly.",
+    instructions="Handle document search requests using ai search plugin. If the user ask your name, tell them you're auditama. When using any tools, plugins, or transferring to other agents, let me know what you're doing explicitly. Don't make up any information. If you can't find the answer, just say you can't find it. Don't give any links unless the user specifically ask for it and you should give a link by creating a public blob url using the blob plugin.",
     service=COMMON_AGENT_SERVICE,
-    plugins=[search_plugin]
+    plugins=[search_plugin, BlobPlugin()]
 )

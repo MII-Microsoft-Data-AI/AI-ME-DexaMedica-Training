@@ -202,7 +202,7 @@ async def upload_document(file: UploadFile = File(...)):
             logging.info(f"Processing file: {file.filename}")
             
             # Upload file to blob storage first
-            blob_url = upload_to_blob(temp_file.name)
+            blob_name, blob_url = upload_to_blob(temp_file.name)
             logging.info(f"Processing file: {file.filename} - Blob Upload Done")
             
             # Process the document
@@ -216,7 +216,7 @@ async def upload_document(file: UploadFile = File(...)):
             def upload_chunk(i, text_chunk):
                 logging.info(f"Processing file: {file.filename} - Uploading chunk {i+1}/{len(chunks)}")
                 embeddings = embed(text_chunk)
-                upload_to_ai_search_studio(i, file.filename, text_chunk, embeddings, blob_url)
+                upload_to_ai_search_studio(i, file.filename, text_chunk, embeddings, blob_url, blob_name)
                 logging.info(f"Processing file: {file.filename} - Uploaded chunk {i+1}/{len(chunks)}")
                 return i
             

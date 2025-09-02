@@ -41,7 +41,7 @@ def main():
     print(f"Processing file: {file_path}")
     
     # Upload to Blob
-    blob_url = upload_to_blob(file_path)
+    blob_name, blob_url = upload_to_blob(file_path)
     print(f"Processing file: {file_path} - Blob Upload Done")
     
     ocr_result = ocr(file_path)
@@ -54,7 +54,7 @@ def main():
     def upload_chunk(i, text_chunk):
         print(f"Processing file: {file_path} - Uploading chunk {i+1}/{len(chunks)}")
         embeddings = embed(text_chunk)
-        upload_to_ai_search_studio(i, file_name, text_chunk, embeddings, blob_url)
+        upload_to_ai_search_studio(i, file_name, text_chunk, embeddings, blob_url, blob_name)
         print(f"Processing file: {file_path} - Uploaded chunk {i+1}/{len(chunks)}")
 
 
