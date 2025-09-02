@@ -31,6 +31,9 @@ class DocumentBaseClass(BaseModel):
     id: Annotated[str, VectorStoreField("key")]
     chunk_num: Annotated[int, VectorStoreField("data")]
     file_name: Annotated[str, VectorStoreField("data")]
+    title: Annotated[str, VectorStoreField("data")]
+    blob_name: Annotated[str, VectorStoreField("data")]
+    blob_url: Annotated[str, VectorStoreField("data")]
     content: Annotated[str, VectorStoreField("data", is_full_text_indexed=True)]
     # Need to be defined as type float and initialized None
     content_vector: Annotated[list[float], VectorStoreField("vector", dimensions=1536, type='float')] = None
@@ -105,7 +108,7 @@ search_plugin = KernelPlugin(
             # This is used to make sure the relevant information from the record is passed to the LLM.
             # string_mapper=lambda x: f"(hotel_id :{x.record.HotelId}) {x.record.HotelName} (rating {x.record.Rating}) - {x.record.Description}. Address: {x.record.Address.StreetAddress}, {x.record.Address.City}, {x.record.Address.StateProvince}, {x.record.Address.Country}. Number of room types: {len(x.record.Rooms)}. Last renovated: {x.record.LastRenovationDate}.",  # noqa: E501
 
-            string_mapper=lambda x: f"(file_name :{x.record.file_name}) (chunk_num: {x.record.chunk_num}) (content: {x.record.content}).",
+            string_mapper=lambda x: f"Results: (file_name :{x.record.file_name}) (chunk_num: {x.record.chunk_num}) (content: {x.record.content}) (tilte: {x.record.title}) (blob_url: {x.record.blob_url}) (blob_name: {x.record.blob_name}).",
         ),
 
         collection.create_search_function(
@@ -120,7 +123,7 @@ search_plugin = KernelPlugin(
                     type_object=str,
                 ),
             ],
-            string_mapper=lambda x: f"(file_name :{x.record.file_name}) (chunk_num: {x.record.chunk_num}) (content: {x.record.content}).",
+        string_mapper=lambda x: f"Results: (file_name :{x.record.file_name}) (chunk_num: {x.record.chunk_num}) (content: {x.record.content}) (tilte: {x.record.title}) (blob_url: {x.record.blob_url}) (blob_name: {x.record.blob_name}).",
         ),
     ],
 )

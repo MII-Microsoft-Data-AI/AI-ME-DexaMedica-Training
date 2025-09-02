@@ -117,7 +117,6 @@ class AzureSpeechStreamingProcessor:
     
     def _on_recognizing(self, evt):
         """Handle intermediate recognition results"""
-        print("Recognizing result:", evt.result.text)
         logger.debug(f"Recognizing: {evt.result.text}")
         if evt.result.text:
             result = {
@@ -132,7 +131,6 @@ class AzureSpeechStreamingProcessor:
     
     def _on_recognized(self, evt):
         """Handle final recognition results"""
-        print("Recognized result:", evt.result.text)
         logger.debug(f"Recognized: {evt.result.text}")
         if evt.result.text:
             # Try to extract confidence score if available

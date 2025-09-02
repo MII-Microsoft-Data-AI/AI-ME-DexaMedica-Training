@@ -73,6 +73,10 @@ DOCUMENT_INTELLIGENCE_ENDPOINT=https://your-resource.cognitiveservices.azure.com
 AI_SEARCH_KEY=your_search_key
 AI_SEARCH_ENDPOINT=https://your-search-service.search.windows.net
 AI_SEARCH_INDEX=documents
+
+# Azure Blob Storage
+BLOB_STORAGE_CONNECTION_STRING=your_blob_storage_connection_string
+BLOB_CONTAINER_NAME=your_container_name
 ```
 
 ## 🚀 Running the Application

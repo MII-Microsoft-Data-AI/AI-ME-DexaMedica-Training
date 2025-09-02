@@ -1,9 +1,11 @@
 import os
 import re
+import uuid
 
 import mimetypes
 from openai import AzureOpenAI
 from azure.search.documents import SearchClient
+from azure.storage.blob import BlobServiceClient
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
@@ -33,28 +35,31 @@ ELIGIBLE_EXTENSIONS_MIME = [
 # Document Intelligence
 DOCUMENT_INTELLIGENCE_ENDPOINT = os.getenv("DOCUMENT_INTELLIGENCE_ENDPOINT")
 DOCUMENT_INTELLIGENCE_KEY = os.getenv("DOCUMENT_INTELLIGENCE_KEY")
+document_intelligence_client = DocumentIntelligenceClient(
+    endpoint=DOCUMENT_INTELLIGENCE_ENDPOINT, credential=AzureKeyCredential(DOCUMENT_INTELLIGENCE_KEY)
+)
 
 # Azure OpenAI
 OPENAI_KEY = os.getenv("OPENAI_KEY")
 OPENAI_ENDPOINT = os.getenv("OPENAI_ENDPOINT")
-
-# Azure AISearch
-AI_SEARCH_ENDPOINT = os.getenv("AI_SEARCH_ENDPOINT")
-AI_SEARCH_KEY = os.getenv("AI_SEARCH_KEY")
-AI_SEARCH_INDEX = os.getenv("AI_SEARCH_INDEX")
-
-document_intelligence_client = DocumentIntelligenceClient(
-        endpoint=DOCUMENT_INTELLIGENCE_ENDPOINT, credential=AzureKeyCredential(DOCUMENT_INTELLIGENCE_KEY)
-)
-
 embedding_client = AzureOpenAI(
     api_version="2024-12-01-preview",
     azure_endpoint=OPENAI_ENDPOINT,
     api_key=OPENAI_KEY
 )
 
+# Azure AISearch
+AI_SEARCH_ENDPOINT = os.getenv("AI_SEARCH_ENDPOINT")
+AI_SEARCH_KEY = os.getenv("AI_SEARCH_KEY")
+AI_SEARCH_INDEX = os.getenv("AI_SEARCH_INDEX")
 aisearch_client = SearchClient(AI_SEARCH_ENDPOINT, AI_SEARCH_INDEX, AzureKeyCredential(AI_SEARCH_KEY))
 aisearch_index_client = SearchIndexClient(endpoint=AI_SEARCH_ENDPOINT, credential=AzureKeyCredential(AI_SEARCH_KEY))
+
+# Azure Blob Storage
+BLOB_STORAGE_CONNECTION_STRING = os.getenv("BLOB_STORAGE_CONNECTION_STRING")
+BLOB_CONTAINER_NAME = os.getenv("BLOB_CONTAINER_NAME", "kaenovatesting")
+blob_service_client = BlobServiceClient.from_connection_string(BLOB_STORAGE_CONNECTION_STRING)
+
 
 # Helper to encode file name before ingested to the ID
 def encode_key(file_name: str, chunk_num: int) -> str:
@@ -70,7 +75,6 @@ def encode_key(file_name: str, chunk_num: int) -> str:
     return key
 
 def init_index():
-
     # Define vector search configuration
     vector_search = VectorSearch(
         algorithms=[
@@ -92,6 +96,9 @@ def init_index():
         SimpleField(name="id", type=SearchFieldDataType.String, key=True),
         SimpleField(name="chunk_num", type=SearchFieldDataType.Int64, filterable=True),
         SimpleField(name="file_name", type=SearchFieldDataType.String, filterable=True),
+        SimpleField(name="title", type=SearchFieldDataType.String, filterable=True),
+        SimpleField(name="blob_name", type=SearchFieldDataType.String, filterable=True),
+        SimpleField(name="blob_url", type=SearchFieldDataType.String, filterable=True),
         SearchableField(name="content", type=SearchFieldDataType.String, searchable=True),
         SearchField(name="content_vector", type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
                 searchable=True, vector_search_dimensions=1536, vector_search_profile_name="vector-profile"),
@@ -100,6 +107,13 @@ def init_index():
     # Create the index
     index = SearchIndex(name=AI_SEARCH_INDEX, fields=fields, vector_search=vector_search)
     aisearch_index_client.create_or_update_index(index)
+
+def init_container():
+    try:
+        container_service_client = blob_service_client.get_container_client(BLOB_CONTAINER_NAME)
+        container_service_client.create_container()
+    except Exception as e:
+        print(f"Container {BLOB_CONTAINER_NAME} may already exist.")
 
 
 def file_eligible(file_path: str) -> bool:
@@ -142,13 +156,29 @@ def embed(text: str) -> list[float]:
     )
     return response.data[0].embedding   
 
-def upload_to_ai_search_studio(chunk_num: int, file_name: str, content: str, embeddings: list[float]) -> None:
+def upload_to_blob(file_path: str) -> str:
+    container_service_client = blob_service_client.get_container_client(BLOB_CONTAINER_NAME)
+
+    file_extension = os.path.splitext(file_path)[1]
+    file_name = str(uuid.uuid4())
+    blob_file_name = f"{file_name}{file_extension}"
+    
+    blob_client = container_service_client.get_blob_client(blob_file_name)
+    with open(file_path, "rb") as data:
+        blob_client.upload_blob(data, overwrite=True)
+
+    return blob_file_name, blob_client.url
+
+def upload_to_ai_search_studio(chunk_num: int, file_name: str, content: str, embeddings: list[float], blob_url: str, blob_name: str) -> None:
     document = {
         "id": encode_key(file_name, chunk_num),
         "file_name": file_name,
         "chunk_num": chunk_num,
         "content": content,
         "content_vector": embeddings,
+        "title": file_name,
+        "blob_url": blob_url,
+        "blob_name": blob_name
     }
 
     aisearch_client.upload_documents([document])
@@ -165,6 +195,9 @@ def main():
     for file in eligible_files:
         file_path = os.path.join('./data', file)
 
+        # Upload to Blob
+        blob_name, blob_url = upload_to_blob(file_path)
+
         # Do OCR
         ocr_result = ocr(file_path)
 
@@ -174,7 +207,8 @@ def main():
         for text_chunk in chunks:
             embeddings = embed(text_chunk)
 
-            upload_to_ai_search_studio(file_path, text_chunk, embeddings)
+            upload_to_ai_search_studio(file_path, text_chunk, embeddings, blob_url, blob_name)
 
 if __name__ == "__main__":
     init_index()
+    init_container()
