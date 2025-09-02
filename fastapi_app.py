@@ -83,14 +83,7 @@ class SpeechWebSocketMessage(BaseModel):
 @app.get("/")
 async def root():
     """Root endpoint - serve the chatbot HTML file"""
-    with open("chatbot_app.html", "r", encoding="utf-8") as f:
-        html_content = f.read()
-    return HTMLResponse(content=html_content, status_code=200)
-
-@app.get("/chatbot_app.html")
-async def chatbot_app():
-    """Serve the chatbot HTML file"""
-    with open("chatbot_app.html", "r", encoding="utf-8") as f:
+    with open("utils/fastapi/chatbot_app.html", "r", encoding="utf-8") as f:
         html_content = f.read()
     return HTMLResponse(content=html_content, status_code=200)
 
@@ -117,6 +110,12 @@ async def hello_post(request: HelloRequest):
         return {
             "message": "This HTTP triggered function executed successfully. Pass a name in the request body for a personalized response."
         }
+
+@app.get("/config/partner-name")
+async def get_partner_name():
+    """Get partner name from environment variable for footer display"""
+    partner_name = os.getenv("PARTNER_NAME")
+    return {"partnerName": partner_name}
 
 # Document Upload Endpoints
 @app.post("/documents/upload")
@@ -389,7 +388,7 @@ async def websocket_speech_stream(websocket: WebSocket):
                             # Decode base64 audio data
                             audio_bytes = base64.b64decode(audio_data)
                             audio_bytes_frames.append(audio_bytes)
-                            print(f"Received audio chunk of size: {len(audio_bytes_frames)} elem, format: {audio_format}")
+                            logging.debug(f"Received audio chunk of size: {len(audio_bytes_frames)} elem, format: {audio_format}")
                             
                             # Use the new convert_audio method with format detection
                             audio_data_bytes = speech_processor.convert_audio(audio_bytes, audio_format)
@@ -509,24 +508,6 @@ async def speech_test_ui():
             return HTMLResponse(content=f.read(), status_code=200)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Speech test UI not found")
-
-@app.get("/speech/test-webrtc-ui", response_class=HTMLResponse)
-async def speech_test_webrtc_ui():
-    """Serve the WebRTC speech recognition test HTML page"""
-    try:
-        with open("speech_test_webrtc.html", "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read(), status_code=200)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="WebRTC Speech test UI not found")
-
-@app.get("/chatbot", response_class=HTMLResponse)
-async def chatbot_app():
-    """Serve the comprehensive chatbot application"""
-    try:
-        with open("chatbot_app.html", "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read(), status_code=200)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Chatbot application not found")
 
 # Single Agent Endpoints
 @app.get("/single/chat")
