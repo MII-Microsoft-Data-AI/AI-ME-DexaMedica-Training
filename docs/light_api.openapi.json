@@ -1,0 +1,696 @@
+{
+  "openapi" : "3.0.3",
+  "info" : {
+    "contact" : {
+      "email" : "support@example.com",
+      "name" : "Smart Home API Support",
+      "url" : "https://example.com/support"
+    },
+    "description" : "A comprehensive REST API for controlling smart lights in a home automation system.\n\n## Features\n- **List all lights** with their current states\n- **Search for lights by name** to get their IDs\n- **Get individual light details** and current state\n- **Control lights** - turn on, off, or toggle\n- **Bulk operations** - control all lights simultaneously\n- **System statistics** - get overview of lighting system\n\n## Use Cases\n- Home automation systems\n- Smart home dashboards\n- Voice assistant integration\n- Mobile applications\n- Energy management systems\n- Security system integration\n\n## Light States\nEach light has three main properties:\n- `id`: Unique integer identifier\n- `name`: Human-readable name/description\n- `is_on`: Boolean indicating if the light is currently on\n",
+    "license" : {
+      "name" : "MIT",
+      "url" : "https://opensource.org/licenses/MIT"
+    },
+    "title" : "Smart Light Control API",
+    "version" : "1.0.0"
+  },
+  "servers" : [ {
+    "description" : "Production server",
+    "url" : "https://kaenova-appservice-testing-edd0bpf3dhc2czgx.indonesiacentral-01.azurewebsites.net"
+  } ],
+  "tags" : [ {
+    "description" : "Smart light control operations. Manage individual lights or control all lights simultaneously.",
+    "name" : "Lights"
+  } ],
+  "paths" : {
+    "/lights" : {
+      "get" : {
+        "description" : "Get a comprehensive list of all available light devices in the system.\n\nThis endpoint returns all lights with their current state, including:\n- Unique identifier for each light\n- Human-readable name/description  \n- Current on/off status\n\n**Use Cases:**\n- Dashboard display of all lights\n- Initial system state polling\n- Inventory management\n- Status monitoring applications\n",
+        "operationId" : "getAllLights",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "examples" : {
+                  "lights_list" : {
+                    "summary" : "Example lights list",
+                    "value" : [ {
+                      "id" : 1,
+                      "name" : "Table Lamp",
+                      "is_on" : false
+                    }, {
+                      "id" : 2,
+                      "name" : "Porch light",
+                      "is_on" : false
+                    }, {
+                      "id" : 3,
+                      "name" : "Chandelier",
+                      "is_on" : true
+                    }, {
+                      "id" : 4,
+                      "name" : "Floor Lamp",
+                      "is_on" : false
+                    }, {
+                      "id" : 5,
+                      "name" : "Desk Lamp",
+                      "is_on" : true
+                    } ]
+                  }
+                },
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/Light"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successfully retrieved all lights"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Internal server error"
+          }
+        },
+        "summary" : "List All Lights",
+        "tags" : [ "Lights" ]
+      }
+    },
+    "/lights/search/{light_name}" : {
+      "get" : {
+        "description" : "Search for a specific light device by its name to check availability and get its ID.\n\n**Parameters:**\n- `light_name`: The exact name of the light to search for (case-sensitive)\n\n**Returns:**\n- Light ID if found\n- Availability status (true/false)  \n- Descriptive message\n\n**Use Cases:**\n- Validate light existence before control operations\n- Get light ID for subsequent API calls\n- User-friendly light selection by name\n- Integration with voice control systems\n\n**Examples:**\n- Search for \"Table Lamp\" → Returns ID 1 if available\n- Search for \"NonExistentLight\" → Returns availability: false\n",
+        "operationId" : "searchLightByName",
+        "parameters" : [ {
+          "description" : "The exact name of the light to search for",
+          "explode" : false,
+          "in" : "path",
+          "name" : "light_name",
+          "required" : true,
+          "schema" : {
+            "example" : "Table Lamp",
+            "type" : "string"
+          },
+          "style" : "simple"
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "examples" : {
+                  "found" : {
+                    "summary" : "Light Found",
+                    "value" : {
+                      "id" : 1,
+                      "available" : true,
+                      "message" : "Light 'Table Lamp' is available with ID 1"
+                    }
+                  },
+                  "not_found" : {
+                    "summary" : "Light Not Found",
+                    "value" : {
+                      "id" : null,
+                      "available" : false,
+                      "message" : "Light 'Unknown Light' not found"
+                    }
+                  }
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/LightAvailabilityResponse"
+                }
+              }
+            },
+            "description" : "Light search completed"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Internal server error"
+          }
+        },
+        "summary" : "Search for Light by Name",
+        "tags" : [ "Lights" ]
+      }
+    },
+    "/lights/{light_id}" : {
+      "get" : {
+        "description" : "Retrieve detailed information about a specific light device using its unique identifier.\n\n**Parameters:**\n- `light_id`: Unique integer identifier of the light (e.g., 1, 2, 3...)\n\n**Returns:**\nComplete light information including:\n- ID: Unique identifier\n- Name: Human-readable light name\n- is_on: Current on/off state (boolean)\n\n**Use Cases:**\n- Check current state before toggling\n- Status monitoring and reporting\n- Individual light management\n- Integration with home automation systems\n\n**Error Handling:**\n- Returns 404 if light ID doesn't exist\n- Returns 422 for invalid ID format\n",
+        "operationId" : "getLightState",
+        "parameters" : [ {
+          "description" : "Unique identifier of the light",
+          "explode" : false,
+          "in" : "path",
+          "name" : "light_id",
+          "required" : true,
+          "schema" : {
+            "example" : 1,
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "style" : "simple"
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "example" : {
+                  "id" : 1,
+                  "name" : "Table Lamp",
+                  "is_on" : false
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/Light"
+                }
+              }
+            },
+            "description" : "Successfully retrieved light information"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "example" : {
+                  "detail" : "Light with ID 99 not found"
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Light not found"
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "example" : {
+                  "detail" : "Light ID must be a valid integer"
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Invalid light ID format"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Internal server error"
+          }
+        },
+        "summary" : "Get Light State by ID",
+        "tags" : [ "Lights" ]
+      }
+    },
+    "/lights/{light_id}/state" : {
+      "put" : {
+        "description" : "Control a light by changing its on/off state using its unique identifier.\n\n**Parameters:**\n- `light_id`: Unique integer identifier of the light to control\n- `is_on`: Desired state (true = turn on, false = turn off)\n\n**Returns:**\nUpdated light information with the new state\n\n**Use Cases:**\n- Turn lights on/off programmatically\n- Home automation integration\n- Smart scheduling systems\n- Mobile app controls\n- Voice assistant integration\n\n**Features:**\n- Immediate state change\n- Idempotent operation (safe to call multiple times)\n- Returns updated state for confirmation\n\n**Error Handling:**\n- Returns 404 if light ID doesn't exist\n- Returns 422 for invalid request format\n",
+        "operationId" : "updateLightState",
+        "parameters" : [ {
+          "description" : "Unique identifier of the light to control",
+          "explode" : false,
+          "in" : "path",
+          "name" : "light_id",
+          "required" : true,
+          "schema" : {
+            "example" : 1,
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "style" : "simple"
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "examples" : {
+                "turn_on" : {
+                  "summary" : "Turn light on",
+                  "value" : {
+                    "is_on" : true
+                  }
+                },
+                "turn_off" : {
+                  "summary" : "Turn light off",
+                  "value" : {
+                    "is_on" : false
+                  }
+                }
+              },
+              "schema" : {
+                "$ref" : "#/components/schemas/LightStateUpdate"
+              }
+            }
+          },
+          "description" : "The desired state for the light",
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "example" : {
+                  "id" : 1,
+                  "name" : "Table Lamp",
+                  "is_on" : true
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/Light"
+                }
+              }
+            },
+            "description" : "Light state successfully updated"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "example" : {
+                  "detail" : "Light with ID 99 not found"
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Light not found"
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "example" : {
+                  "detail" : "Request validation error"
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Invalid request format"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Internal server error"
+          }
+        },
+        "summary" : "Update Light State",
+        "tags" : [ "Lights" ]
+      }
+    },
+    "/lights/{light_id}/toggle" : {
+      "post" : {
+        "description" : "Toggle a light's current state - if it's on, turn it off; if it's off, turn it on.\n\n**Parameters:**\n- `light_id`: Unique integer identifier of the light to toggle\n\n**Returns:**\nUpdated light information with the new toggled state\n\n**Use Cases:**\n- Quick on/off switching without knowing current state\n- Smart switch implementations\n- Convenient toggle functionality for UIs\n- Voice commands like \"toggle living room light\"\n\n**Behavior:**\n- Current state ON → Changes to OFF\n- Current state OFF → Changes to ON\n- Atomic operation ensuring state consistency\n\n**Error Handling:**\n- Returns 404 if light ID doesn't exist\n- Returns 500 for system errors\n",
+        "operationId" : "toggleLight",
+        "parameters" : [ {
+          "description" : "Unique identifier of the light to toggle",
+          "explode" : false,
+          "in" : "path",
+          "name" : "light_id",
+          "required" : true,
+          "schema" : {
+            "example" : 1,
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "style" : "simple"
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "examples" : {
+                  "toggled_on" : {
+                    "summary" : "Light toggled on",
+                    "value" : {
+                      "id" : 1,
+                      "name" : "Table Lamp",
+                      "is_on" : true
+                    }
+                  },
+                  "toggled_off" : {
+                    "summary" : "Light toggled off",
+                    "value" : {
+                      "id" : 1,
+                      "name" : "Table Lamp",
+                      "is_on" : false
+                    }
+                  }
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/Light"
+                }
+              }
+            },
+            "description" : "Light state successfully toggled"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "example" : {
+                  "detail" : "Light with ID 99 not found"
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Light not found"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Internal server error"
+          }
+        },
+        "summary" : "Toggle Light State",
+        "tags" : [ "Lights" ]
+      }
+    },
+    "/lights/all/on" : {
+      "post" : {
+        "description" : "Turn on all lights in the system simultaneously.\n\n**Returns:**\nList of all lights with their updated states (all should be on)\n\n**Use Cases:**\n- Emergency lighting activation\n- \"All lights on\" scenes\n- Security system integration\n- Bulk operations for convenience\n\n**Features:**\n- Batch operation for efficiency\n- Returns complete system state after operation\n- Idempotent (lights already on remain on)\n",
+        "operationId" : "turnOnAllLights",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "example" : [ {
+                  "id" : 1,
+                  "name" : "Table Lamp",
+                  "is_on" : true
+                }, {
+                  "id" : 2,
+                  "name" : "Porch light",
+                  "is_on" : true
+                }, {
+                  "id" : 3,
+                  "name" : "Chandelier",
+                  "is_on" : true
+                }, {
+                  "id" : 4,
+                  "name" : "Floor Lamp",
+                  "is_on" : true
+                }, {
+                  "id" : 5,
+                  "name" : "Desk Lamp",
+                  "is_on" : true
+                } ],
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/Light"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "All lights successfully turned on"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Internal server error"
+          }
+        },
+        "summary" : "Turn On All Lights",
+        "tags" : [ "Lights" ]
+      }
+    },
+    "/lights/all/off" : {
+      "post" : {
+        "description" : "Turn off all lights in the system simultaneously.\n\n**Returns:**\nList of all lights with their updated states (all should be off)\n\n**Use Cases:**\n- Energy saving \"all off\" command\n- End-of-day shutdown routines\n- Security system integration\n- Emergency power conservation\n- Vacation/away mode activation\n\n**Features:**\n- Batch operation for efficiency\n- Returns complete system state after operation\n- Idempotent (lights already off remain off)\n",
+        "operationId" : "turnOffAllLights",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "example" : [ {
+                  "id" : 1,
+                  "name" : "Table Lamp",
+                  "is_on" : false
+                }, {
+                  "id" : 2,
+                  "name" : "Porch light",
+                  "is_on" : false
+                }, {
+                  "id" : 3,
+                  "name" : "Chandelier",
+                  "is_on" : false
+                }, {
+                  "id" : 4,
+                  "name" : "Floor Lamp",
+                  "is_on" : false
+                }, {
+                  "id" : 5,
+                  "name" : "Desk Lamp",
+                  "is_on" : false
+                } ],
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/Light"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "All lights successfully turned off"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Internal server error"
+          }
+        },
+        "summary" : "Turn Off All Lights",
+        "tags" : [ "Lights" ]
+      }
+    },
+    "/lights/stats" : {
+      "get" : {
+        "description" : "Get statistical information about all lights in the system.\n\n**Returns:**\nComprehensive statistics including:\n- Total number of lights\n- Number of lights currently on\n- Number of lights currently off  \n- Percentage of lights that are on\n- List of lights that are currently on\n- List of lights that are currently off\n\n**Use Cases:**\n- Dashboard summary displays\n- Energy usage monitoring\n- System status overview\n- Analytics and reporting\n- Smart home optimization\n",
+        "operationId" : "getLightStatistics",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "example" : {
+                  "total_lights" : 5,
+                  "lights_on" : 2,
+                  "lights_off" : 3,
+                  "percentage_on" : 40.0,
+                  "on_lights" : [ "Chandelier", "Desk Lamp" ],
+                  "off_lights" : [ "Table Lamp", "Porch light", "Floor Lamp" ]
+                },
+                "schema" : {
+                  "$ref" : "#/components/schemas/LightStatistics"
+                }
+              }
+            },
+            "description" : "Light statistics successfully retrieved"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Internal server error"
+          }
+        },
+        "summary" : "Get Light Statistics",
+        "tags" : [ "Lights" ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "Light" : {
+        "description" : "Represents a light device with its current state",
+        "example" : {
+          "id" : 1,
+          "name" : "Table Lamp",
+          "is_on" : false
+        },
+        "properties" : {
+          "id" : {
+            "description" : "Unique identifier for the light",
+            "example" : 1,
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "name" : {
+            "description" : "Human-readable name of the light",
+            "example" : "Table Lamp",
+            "type" : "string"
+          },
+          "is_on" : {
+            "description" : "Current on/off state of the light",
+            "example" : false,
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "id", "is_on", "name" ],
+        "type" : "object"
+      },
+      "LightStateUpdate" : {
+        "description" : "Model for updating a light's on/off state",
+        "example" : {
+          "is_on" : true
+        },
+        "properties" : {
+          "is_on" : {
+            "description" : "Desired state for the light (true = on, false = off)",
+            "example" : true,
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "is_on" ],
+        "type" : "object"
+      },
+      "LightAvailabilityResponse" : {
+        "description" : "Response model for light availability check",
+        "properties" : {
+          "id" : {
+            "description" : "Light ID if found, null if not found",
+            "example" : 1,
+            "minimum" : 1,
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "available" : {
+            "description" : "Whether the light is available in the system",
+            "example" : true,
+            "type" : "boolean"
+          },
+          "message" : {
+            "description" : "Descriptive message about the search result",
+            "example" : "Light 'Table Lamp' is available with ID 1",
+            "type" : "string"
+          }
+        },
+        "required" : [ "available", "message" ],
+        "type" : "object"
+      },
+      "LightStatistics" : {
+        "description" : "Statistical information about the lighting system",
+        "example" : {
+          "total_lights" : 5,
+          "lights_on" : 2,
+          "lights_off" : 3,
+          "percentage_on" : 40.0,
+          "on_lights" : [ "Chandelier", "Desk Lamp" ],
+          "off_lights" : [ "Table Lamp", "Porch light", "Floor Lamp" ]
+        },
+        "properties" : {
+          "total_lights" : {
+            "description" : "Total number of lights in the system",
+            "example" : 5,
+            "minimum" : 0,
+            "type" : "integer"
+          },
+          "lights_on" : {
+            "description" : "Number of lights currently turned on",
+            "example" : 2,
+            "minimum" : 0,
+            "type" : "integer"
+          },
+          "lights_off" : {
+            "description" : "Number of lights currently turned off",
+            "example" : 3,
+            "minimum" : 0,
+            "type" : "integer"
+          },
+          "percentage_on" : {
+            "description" : "Percentage of lights that are currently on",
+            "example" : 40.0,
+            "format" : "float",
+            "maximum" : 100,
+            "minimum" : 0,
+            "type" : "number"
+          },
+          "on_lights" : {
+            "description" : "Names of lights that are currently on",
+            "example" : [ "Chandelier", "Desk Lamp" ],
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "off_lights" : {
+            "description" : "Names of lights that are currently off",
+            "example" : [ "Table Lamp", "Porch light", "Floor Lamp" ],
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "lights_off", "lights_on", "off_lights", "on_lights", "percentage_on", "total_lights" ],
+        "type" : "object"
+      },
+      "ErrorResponse" : {
+        "description" : "Standard error response format",
+        "example" : {
+          "detail" : "Light with ID 99 not found"
+        },
+        "properties" : {
+          "detail" : {
+            "description" : "Error message describing what went wrong",
+            "example" : "Light with ID 99 not found",
+            "type" : "string"
+          }
+        },
+        "required" : [ "detail" ],
+        "type" : "object"
+      }
+    },
+    "securitySchemes" : {
+      "ApiKeyAuth" : {
+        "description" : "API key for authentication (if required)",
+        "in" : "header",
+        "name" : "X-API-Key",
+        "type" : "apiKey"
+      },
+      "BearerAuth" : {
+        "bearerFormat" : "JWT",
+        "description" : "JWT token for authentication (if required)",
+        "scheme" : "bearer",
+        "type" : "http"
+      }
+    }
+  }
+}
