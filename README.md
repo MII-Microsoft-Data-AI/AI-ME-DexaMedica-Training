@@ -54,6 +54,9 @@ pip install -r requirements.txt
 Copy `.env.example` to `.env` and configure your Azure services:
 
 ```env
+# Container Environment (to deactivate some features)
+CONTAINER_ENV=0 # "0"/"1" value
+
 # Partner Name for Footer
 PARTNER_NAME=Your Company Name
 
