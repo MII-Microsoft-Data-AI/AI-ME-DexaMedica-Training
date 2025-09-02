@@ -157,19 +157,16 @@ class AzureSpeechStreamingProcessor:
                 self.queue_output.put(result)
     
     def _on_session_started(self, evt):
-        print("Starting session:", evt)
         """Handle session start"""
         logger.info("Speech recognition session started")
     
     def _on_session_stopped(self, evt):
         """Handle session stop"""
-        print("Session stop:", evt)
         logger.info("Speech recognition session stopped")
         self.is_running = False
     
     def _on_canceled(self, evt):
         """Handle cancellation"""
-        print("Recognition canceled:", evt)
         logger.warning(f"Speech recognition canceled: {evt}")
         self.is_running = False
         if hasattr(evt, 'error_details'):
@@ -222,7 +219,6 @@ class AzureSpeechStreamingProcessor:
         if self.audio_stream and self.is_running:
             try:
                 logger.debug(f"Pushing audio data of length: {len(audio_data)} bytes")
-                print("Pushing audio data of length:", len(audio_data))
                 self.audio_stream.write(audio_data)
             except Exception as e:
                 print(f"Failed to push audio data: {e}")
