@@ -4,7 +4,7 @@ from azure.ai.agents.models import MessageDeltaChunk
 import queue
 import os
 
-class FondaryAgent:
+class FoundryAgent:
 
     def __init__(self):
         endpoint = os.getenv("FOUNDRY_ENDPOINT")
