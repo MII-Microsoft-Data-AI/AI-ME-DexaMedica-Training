@@ -1017,7 +1017,6 @@ wheels = [
 
 [package.optional-dependencies]
 broker = [
-    { name = "pymsalruntime", marker = "sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
 
 [[package]]
@@ -1540,23 +1539,6 @@ name = "pymeta3"
 version = "0.5.1"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ce/af/409edba35fc597f1e386e3860303791ab5a28d6cc9a8aecbc567051b19a9/PyMeta3-0.5.1.tar.gz", hash = "sha256:18bda326d9a9bbf587bfc0ee0bc96864964d78b067288bcf55d4d98681d05bcb", size = 29566, upload-time = "2015-02-22T16:30:06.858Z" }
-
-[[package]]
-name = "pymsalruntime"
-version = "0.18.1"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/af/4f/7b99671b2dacdecbb9bd9caccb0fe9b0a39d4579c488b25ebf73613bda8d/pymsalruntime-0.18.1-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:a6c07651cf4e07690d1b022da0977f56820ef553ac6dcbf4c9e68e9611020997", size = 2122264, upload-time = "2025-03-13T18:46:35.749Z" },
-    { url = "https://files.pythonhosted.org/packages/e5/42/cdbb5da7ee55da89fd3f21f8f884d2f895dfed5947c9f6220fa762825aaa/pymsalruntime-0.18.1-cp312-cp312-macosx_14_0_x86_64.whl", hash = "sha256:0b6c4f54ec13309cc7b717ac8760c2d9856d4924cefa2b794b6d03db4cfdeef8", size = 2330142, upload-time = "2025-03-13T18:46:38.579Z" },
-    { url = "https://files.pythonhosted.org/packages/a3/93/8b77902d3d53c01cf6e16ac01b02c58a2a66a1bd9205aebd52cc1bf392db/pymsalruntime-0.18.1-cp312-cp312-manylinux_2_35_x86_64.whl", hash = "sha256:06c73a47f024fcf36006b89fe32f2f6f6a004aa661cf8a03d3e496d1ef84cfe8", size = 93260473, upload-time = "2025-03-13T18:47:25.811Z" },
-    { url = "https://files.pythonhosted.org/packages/a1/d3/0399d685a7c544dd6792736a8f0dbb66e66a452dd5c53134cdff2ea39477/pymsalruntime-0.18.1-cp312-cp312-win32.whl", hash = "sha256:ace12bf9b7fcbf1bf21a03c227717e09ba99acd9190623fe0821a08832ece4eb", size = 1093430, upload-time = "2025-03-13T18:12:31.525Z" },
-    { url = "https://files.pythonhosted.org/packages/f1/cc/22bb46a8c5a17c815a50e82b430808ebe970239d41a3b5851fb9b86b4912/pymsalruntime-0.18.1-cp312-cp312-win_amd64.whl", hash = "sha256:f9fd8ea52395f52f7d62498e47754adf2bfe6530816ff57eff1ba6f524aee51b", size = 1245309, upload-time = "2025-03-13T18:12:16.771Z" },
-    { url = "https://files.pythonhosted.org/packages/e3/f8/eb0053bfd6d77db12b16222814f41e3f3a5c712ddae7f16b701e1e08c820/pymsalruntime-0.18.1-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:047a98b6709cddf6a1f50f78ee16d06fea0f42a44971b6d3e2988537277a1a17", size = 2120684, upload-time = "2025-03-13T18:46:41.092Z" },
-    { url = "https://files.pythonhosted.org/packages/0e/90/4e9c6eabb5bba24aafd056144c95f7b18a1b5c87cc871d2e2da9f09c4746/pymsalruntime-0.18.1-cp313-cp313-macosx_14_0_x86_64.whl", hash = "sha256:910e653c65cd66fa9ce46dec103d3948da2276f7d4d315631a145eaab968d9a8", size = 2328531, upload-time = "2025-03-13T18:46:44.226Z" },
-    { url = "https://files.pythonhosted.org/packages/82/48/7ce57351f7267b42d59e928a2656138c27c73dd27c869b5b8df7660deeda/pymsalruntime-0.18.1-cp313-cp313-manylinux_2_35_x86_64.whl", hash = "sha256:7ae0b160983ea0715d8ac69b441bbd29e7a9f31c9a5a2c350c79a794f5599f38", size = 93243073, upload-time = "2025-03-13T18:47:35.095Z" },
-    { url = "https://files.pythonhosted.org/packages/d9/bb/01061cf3d97e41d512202250f1483b3acb1007349e35f30aa632910111c2/pymsalruntime-0.18.1-cp313-cp313-win32.whl", hash = "sha256:adf4200a1b423fe5d8e984c142cc64f0b76a9b0f7f8ff767490a2dde94fa642b", size = 1092636, upload-time = "2025-03-13T18:12:33.985Z" },
-    { url = "https://files.pythonhosted.org/packages/cf/0d/6984f5b95c4c7dc6f38eaabb423ffa6c854cae137c299dc069b997347b3e/pymsalruntime-0.18.1-cp313-cp313-win_amd64.whl", hash = "sha256:5a759aa551d084b160799f6df59c9891898ab305eb75ff1705bf04281675eb4b", size = 1244449, upload-time = "2025-03-13T18:12:19.393Z" },
-]
 
 [[package]]
 name = "pyopenssl"
