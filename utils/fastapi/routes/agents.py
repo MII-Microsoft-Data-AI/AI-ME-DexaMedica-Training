@@ -17,7 +17,7 @@ import os
 from single_agent.agent import AgentSingleton
 from multi_agent.agent import MultiAgent
 from hands_off_agent.agent import HandsoffAgent
-from fondary_agent.agent import FondaryAgent
+from foundry_agent.agent import FoundryAgent
 
 # Import utilities
 from utils.history import chat_history_from_base64, chat_history_to_base64, chat_history_compress, chat_history_decompress
@@ -27,7 +27,7 @@ from utils.state import state_compress, state_decompress, state_to_base64, state
 agent = AgentSingleton()
 multi_agent = MultiAgent()
 hands_off_agent = HandsoffAgent()
-foundry_agent = FondaryAgent()
+foundry_agent = FoundryAgent()
 try:
     
     logging.info("Foundry Agent initialized successfully")
