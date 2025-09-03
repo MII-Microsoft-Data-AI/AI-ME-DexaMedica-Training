@@ -10,8 +10,6 @@ azure-cognitiveservices-speech==1.45.0
     # via function-semantic-kernel (pyproject.toml)
 azure-functions==1.23.0
     # via function-semantic-kernel (pyproject.toml)
-azure-identity-broker==1.3.0
-    # via function-semantic-kernel (pyproject.toml)
 azure-search-documents==11.5.3
     # via function-semantic-kernel (pyproject.toml)
 azure-storage-blob==12.26.0

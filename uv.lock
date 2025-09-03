@@ -295,19 +295,6 @@ wheels = [
 ]
 
 [[package]]
-name = "azure-identity-broker"
-version = "1.3.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "azure-identity" },
-    { name = "msal", extra = ["broker"] },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/01/ca/a8eb8571f71f244a07debc77f335deadee6ecb17be5743479f878a68eaa4/azure_identity_broker-1.3.0.tar.gz", hash = "sha256:1f40ea42d31da86669fe4cd4f93e4cdf91b9b1cffca1fba39cf5ba0f7df1bd27", size = 15612, upload-time = "2025-08-07T22:27:48.032Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fa/f9/b3bd9b1c3d692404bedeec27aeb596d1984b1a99c6513e90e5f68cb95726/azure_identity_broker-1.3.0-py3-none-any.whl", hash = "sha256:1e17b9a48378ea32180ba428eb2eca8b29eda93310d7123beb246ae94306d8c0", size = 11362, upload-time = "2025-08-07T22:27:48.923Z" },
-]
-
-[[package]]
 name = "azure-search-documents"
 version = "11.5.3"
 source = { registry = "https://pypi.org/simple" }
@@ -622,7 +609,6 @@ dependencies = [
     { name = "azure-ai-documentintelligence" },
     { name = "azure-cognitiveservices-speech" },
     { name = "azure-functions" },
-    { name = "azure-identity-broker" },
     { name = "azure-search-documents" },
     { name = "azure-storage-blob" },
     { name = "fastapi" },
@@ -642,7 +628,6 @@ requires-dist = [
     { name = "azure-ai-documentintelligence", specifier = "==1.0.0b4" },
     { name = "azure-cognitiveservices-speech", specifier = "==1.45.0" },
     { name = "azure-functions", specifier = "==1.23.0" },
-    { name = "azure-identity-broker", specifier = ">=1.3.0" },
     { name = "azure-search-documents", specifier = "==11.5.3" },
     { name = "azure-storage-blob", specifier = ">=12.26.0" },
     { name = "fastapi", specifier = "==0.104.1" },
@@ -1013,10 +998,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d5/da/81acbe0c1fd7e9e4ec35f55dadeba9833a847b9a6ba2e2d1e4432da901dd/msal-1.33.0.tar.gz", hash = "sha256:836ad80faa3e25a7d71015c990ce61f704a87328b1e73bcbb0623a18cbf17510", size = 153801, upload-time = "2025-07-22T19:36:33.693Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/86/5b/fbc73e91f7727ae1e79b21ed833308e99dc11cc1cd3d4717f579775de5e9/msal-1.33.0-py3-none-any.whl", hash = "sha256:c0cd41cecf8eaed733ee7e3be9e040291eba53b0f262d3ae9c58f38b04244273", size = 116853, upload-time = "2025-07-22T19:36:32.403Z" },
-]
-
-[package.optional-dependencies]
-broker = [
 ]
 
 [[package]]
